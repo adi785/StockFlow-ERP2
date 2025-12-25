@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
@@ -17,9 +17,16 @@ import { AddSaleDialog } from '@/components/sales/AddSaleDialog';
 const Sales = () => {
   const addSale = useERPStore((state) => state.addSale);
   const deleteSale = useERPStore((state) => state.deleteSale);
+  const customers = useERPStore((state) => state.customers);
+  const fetchCustomers = useERPStore((state) => state.fetchCustomers);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+
+  // Fetch customers when component mounts
+  useEffect(() => {
+    fetchCustomers();
+  }, [fetchCustomers]);
 
   // Use custom hook for sales data management
   const { sales, products, purchases, filteredGroupedSales } = useSalesData(searchTerm);
@@ -59,12 +66,10 @@ const Sales = () => {
         description="Record sales to customers"
         actions={
           <Button onClick={() => setIsAddDialogOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            New Sale
+            <Plus className="mr-2 h-4 w-4" /> New Sale
           </Button>
         }
       />
-
       <div className="p-6">
         {/* Search Bar */}
         <div className="mb-4 flex items-center gap-4">
@@ -77,9 +82,7 @@ const Sales = () => {
               className="pl-9"
             />
           </div>
-          <div className="text-sm text-muted-foreground">
-            {filteredGroupedSales.length} invoices
-          </div>
+          <div className="text-sm text-muted-foreground">{filteredGroupedSales.length} invoices</div>
         </div>
 
         {/* Sales Table */}
@@ -105,6 +108,7 @@ const Sales = () => {
         calculatedValues={calculatedValues}
         isQuantityValid={isQuantityValid}
         handleAddSale={handleAddSale}
+        customers={customers} // Pass customers to the dialog
       />
 
       {/* Hidden component for PDF generation */}

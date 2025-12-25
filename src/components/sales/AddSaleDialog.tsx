@@ -1,14 +1,25 @@
 import React from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { AlertCircle } from 'lucide-react';
 import { formatCurrency } from '@/lib/formatters';
-import { customers } from '@/data/mockData';
 import { Product, Purchase, Sale } from '@/types/erp';
 import { getAvailableStock } from '@/lib/erpCalculations';
+import { Customer } from '@/integrations/supabase/partnerApi';
 
 interface AddSaleDialogProps {
   isOpen: boolean;
@@ -20,13 +31,15 @@ interface AddSaleDialogProps {
     quantity: number;
     date: string;
   };
-  setNewSale: React.Dispatch<React.SetStateAction<{
-    invoiceNo: string;
-    customer: string;
-    productId: string;
-    quantity: number;
-    date: string;
-  }>>;
+  setNewSale: React.Dispatch<
+    React.SetStateAction<{
+      invoiceNo: string;
+      customer: string;
+      productId: string;
+      quantity: number;
+      date: string;
+    }>
+  >;
   products: Product[];
   purchases: Purchase[];
   sales: Sale[];
@@ -40,6 +53,7 @@ interface AddSaleDialogProps {
   };
   isQuantityValid: boolean;
   handleAddSale: () => void;
+  customers: Customer[]; // Add customers prop
 }
 
 export const AddSaleDialog: React.FC<AddSaleDialogProps> = ({
@@ -55,6 +69,7 @@ export const AddSaleDialog: React.FC<AddSaleDialogProps> = ({
   calculatedValues,
   isQuantityValid,
   handleAddSale,
+  customers, // Destructure customers
 }) => {
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -92,8 +107,8 @@ export const AddSaleDialog: React.FC<AddSaleDialogProps> = ({
               </SelectTrigger>
               <SelectContent>
                 {customers.map((c) => (
-                  <SelectItem key={c} value={c}>
-                    {c}
+                  <SelectItem key={c.id} value={c.name}>
+                    {c.name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -164,26 +179,21 @@ export const AddSaleDialog: React.FC<AddSaleDialogProps> = ({
           </div>
           {selectedProduct && newSale.quantity > 0 && (
             <div className="rounded-lg border-2 border-green-200 bg-green-50 p-4 dark:border-green-900/50 dark:bg-green-900/20">
-              <h4 className="mb-2 font-semibold text-green-800 dark:text-green-200">
-                Calculated Values
-              </h4>
+              <h4 className="mb-2 font-semibold text-green-800 dark:text-green-200"> Calculated Values </h4>
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <div>
                   <span className="text-muted-foreground">Subtotal:</span>{' '}
-                  <span className="font-medium">
-                    {formatCurrency(calculatedValues.totalValue)}
-                  </span>
+                  <span className="font-medium"> {formatCurrency(calculatedValues.totalValue)} </span>
                 </div>
                 <div>
                   <span className="text-muted-foreground">GST Amount:</span>{' '}
-                  <span className="font-medium">
-                    {formatCurrency(calculatedValues.gstAmount)}
-                  </span>
+                  <span className="font-medium"> {formatCurrency(calculatedValues.gstAmount)} </span>
                 </div>
                 <div className="col-span-2 border-t border-green-200 pt-2 mt-2 dark:border-green-800">
                   <span className="text-muted-foreground">Grand Total:</span>{' '}
                   <span className="text-lg font-bold text-green-600">
-                    {formatCurrency(calculatedValues.grandTotal)}
+                    {' '}
+                    {formatCurrency(calculatedValues.grandTotal)}{' '}
                   </span>
                 </div>
               </div>
@@ -192,7 +202,8 @@ export const AddSaleDialog: React.FC<AddSaleDialogProps> = ({
         </div>
         <div className="flex justify-end gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
+            {' '}
+            Cancel{' '}
           </Button>
           <Button onClick={handleAddSale} disabled={!isQuantityValid}>
             Record Sale

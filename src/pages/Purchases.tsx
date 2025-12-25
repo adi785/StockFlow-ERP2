@@ -8,9 +8,14 @@ import { getProductById } from '@/lib/erpCalculations';
 import { formatCurrency, formatDate, generateInvoiceNo } from '@/lib/formatters';
 import { Plus, Trash2, Search, Download } from 'lucide-react';
 import { toast } from 'sonner';
-import { suppliers } from '@/data/mockData';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, } from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { ErpDocumentPdf } from '@/components/ErpDocumentPdf';
 import { usePdfGenerator } from '@/hooks/erp/usePdfGenerator';
@@ -18,13 +23,16 @@ import { usePdfGenerator } from '@/hooks/erp/usePdfGenerator';
 const Purchases = () => {
   const purchases = useERPStore((state) => state.purchases);
   const products = useERPStore((state) => state.products);
+  const suppliers = useERPStore((state) => state.suppliers); // Get suppliers from store
   const addPurchase = useERPStore((state) => state.addPurchase);
   const deletePurchase = useERPStore((state) => state.deletePurchase);
   const fetchAllData = useERPStore((state) => state.fetchAllData);
+  const fetchSuppliers = useERPStore((state) => state.fetchSuppliers); // Fetch suppliers
 
   useEffect(() => {
     fetchAllData();
-  }, [fetchAllData]);
+    fetchSuppliers(); // Fetch suppliers when component mounts
+  }, [fetchAllData, fetchSuppliers]);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -37,7 +45,7 @@ const Purchases = () => {
   });
 
   const selectedProduct = useMemo(
-    () => newPurchase.productId ? getProductById(products, newPurchase.productId) : null,
+    () => (newPurchase.productId ? getProductById(products, newPurchase.productId) : null),
     [products, newPurchase.productId]
   );
 
@@ -45,8 +53,10 @@ const Purchases = () => {
     if (!selectedProduct) {
       return { purchaseRate: 0, totalValue: 0, gstAmount: 0, grandTotal: 0 };
     }
+
     const totalValue = selectedProduct.purchaseRate * newPurchase.quantity;
     const gstAmount = (totalValue * selectedProduct.gstPercent) / 100;
+
     return {
       purchaseRate: selectedProduct.purchaseRate,
       totalValue,
@@ -56,11 +66,13 @@ const Purchases = () => {
   }, [selectedProduct, newPurchase.quantity]);
 
   const filteredPurchases = useMemo(
-    () => purchases.filter(
-      (p) => p.invoiceNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        p.supplier.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        p.productId.toLowerCase().includes(searchTerm.toLowerCase())
-    ),
+    () =>
+      purchases.filter(
+        (p) =>
+          p.invoiceNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          p.supplier.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          p.productId.toLowerCase().includes(searchTerm.toLowerCase())
+      ),
     [purchases, searchTerm]
   );
 
@@ -79,10 +91,12 @@ const Purchases = () => {
       toast.error('Please fill in all required fields');
       return;
     }
+
     if (newPurchase.quantity <= 0) {
       toast.error('Quantity must be greater than 0');
       return;
     }
+
     addPurchase({
       invoiceNo: newPurchase.invoiceNo,
       supplier: newPurchase.supplier,
@@ -94,6 +108,7 @@ const Purchases = () => {
       grandTotal: calculatedValues.grandTotal,
       date: new Date(newPurchase.date),
     });
+
     setIsAddDialogOpen(false);
     setNewPurchase({
       invoiceNo: generateInvoiceNo('PUR', purchases.length + 2),
@@ -108,28 +123,31 @@ const Purchases = () => {
   // Group purchases by invoice number for display
   const groupedPurchases = useMemo(() => {
     const groups: { [key: string]: typeof purchases[0][] } = {};
-    purchases.forEach(purchase => {
+    purchases.forEach((purchase) => {
       if (!groups[purchase.invoiceNo]) {
         groups[purchase.invoiceNo] = [];
       }
       groups[purchase.invoiceNo].push(purchase);
     });
+
     // Sort groups by date of the first purchase in descending order
-    return Object.values(groups).sort((a, b) => new Date(b[0].date).getTime() - new Date(a[0].date).getTime());
+    return Object.values(groups).sort(
+      (a, b) => new Date(b[0].date).getTime() - new Date(a[0].date).getTime()
+    );
   }, [purchases]);
 
-  const filteredGroupedPurchases = useMemo(() => {
-    return groupedPurchases.filter(
-      (group) => {
+  const filteredGroupedPurchases = useMemo(
+    () =>
+      groupedPurchases.filter((group) => {
         const firstPurchase = group[0];
         const matchesSearch =
           firstPurchase.invoiceNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
           firstPurchase.supplier.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          group.some(item => item.productId.toLowerCase().includes(searchTerm.toLowerCase()));
+          group.some((item) => item.productId.toLowerCase().includes(searchTerm.toLowerCase()));
         return matchesSearch;
-      }
-    );
-  }, [groupedPurchases, searchTerm]);
+      }),
+    [groupedPurchases, searchTerm]
+  );
 
   return (
     <AppLayout>
@@ -138,12 +156,10 @@ const Purchases = () => {
         description="Record stock purchases from suppliers"
         actions={
           <Button onClick={() => setIsAddDialogOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            New Purchase
+            <Plus className="mr-2 h-4 w-4" /> New Purchase
           </Button>
         }
       />
-
       <div className="p-6">
         {/* Search Bar */}
         <div className="mb-4 flex items-center gap-4">
@@ -156,9 +172,7 @@ const Purchases = () => {
               className="pl-9"
             />
           </div>
-          <div className="text-sm text-muted-foreground">
-            {filteredGroupedPurchases.length} records
-          </div>
+          <div className="text-sm text-muted-foreground">{filteredGroupedPurchases.length} records</div>
         </div>
 
         {/* Data Grid */}
@@ -188,9 +202,7 @@ const Purchases = () => {
 
                   return (
                     <tr key={firstPurchase.invoiceNo} className="grid-row hover:bg-muted/30 transition-colors">
-                      <td className="px-4 py-2.5 text-muted-foreground">
-                        {formatDate(firstPurchase.date)}
-                      </td>
+                      <td className="px-4 py-2.5 text-muted-foreground">{formatDate(firstPurchase.date)}</td>
                       <td className="px-4 py-2.5 font-mono text-xs font-medium text-primary">
                         {firstPurchase.invoiceNo}
                       </td>
@@ -205,12 +217,8 @@ const Purchases = () => {
                           );
                         })}
                       </td>
-                      <td className="px-4 py-2.5 text-right tabular-nums font-medium">
-                        {totalQuantity}
-                      </td>
-                      <td className="px-4 py-2.5 text-right tabular-nums">
-                        {formatCurrency(totalValue)}
-                      </td>
+                      <td className="px-4 py-2.5 text-right tabular-nums font-medium">{totalQuantity}</td>
+                      <td className="px-4 py-2.5 text-right tabular-nums">{formatCurrency(totalValue)}</td>
                       <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground">
                         {formatCurrency(totalGstAmount)}
                       </td>
@@ -223,7 +231,9 @@ const Purchases = () => {
                             size="icon"
                             variant="ghost"
                             className="h-7 w-7 text-primary hover:text-primary hover:bg-primary/10"
-                            onClick={() => handleDownloadPdf('purchase', firstPurchase.invoiceNo, purchases, [], products)}
+                            onClick={() =>
+                              handleDownloadPdf('purchase', firstPurchase.invoiceNo, purchases, [], products)
+                            }
                             title="Download Purchase Order"
                           >
                             <Download className="h-4 w-4" />
@@ -245,24 +255,37 @@ const Purchases = () => {
               <tfoot>
                 <tr className="border-t-2 border-border bg-muted/30">
                   <td colSpan={4} className="px-4 py-3 text-right font-semibold">
-                    Total:
+                    {' '}
+                    Total:{' '}
                   </td>
                   <td className="px-4 py-3 text-right tabular-nums font-semibold">
-                    {filteredGroupedPurchases.reduce((sum, group) => sum + group.reduce((s, item) => s + item.quantity, 0), 0)}
-                  </td>
-                  <td className="px-4 py-3 text-right tabular-nums font-semibold">
-                    {formatCurrency(
-                      filteredGroupedPurchases.reduce((sum, group) => sum + group.reduce((s, item) => s + item.totalValue, 0), 0)
+                    {filteredGroupedPurchases.reduce(
+                      (sum, group) => sum + group.reduce((s, item) => s + item.quantity, 0),
+                      0
                     )}
                   </td>
                   <td className="px-4 py-3 text-right tabular-nums font-semibold">
                     {formatCurrency(
-                      filteredGroupedPurchases.reduce((sum, group) => sum + group.reduce((s, item) => s + item.gstAmount, 0), 0)
+                      filteredGroupedPurchases.reduce(
+                        (sum, group) => sum + group.reduce((s, item) => s + item.totalValue, 0),
+                        0
+                      )
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-right tabular-nums font-semibold">
+                    {formatCurrency(
+                      filteredGroupedPurchases.reduce(
+                        (sum, group) => sum + group.reduce((s, item) => s + item.gstAmount, 0),
+                        0
+                      )
                     )}
                   </td>
                   <td className="px-4 py-3 text-right tabular-nums font-bold text-primary">
                     {formatCurrency(
-                      filteredGroupedPurchases.reduce((sum, group) => sum + group.reduce((s, item) => s + item.grandTotal, 0), 0)
+                      filteredGroupedPurchases.reduce(
+                        (sum, group) => sum + group.reduce((s, item) => s + item.grandTotal, 0),
+                        0
+                      )
                     )}
                   </td>
                   <td></td>
@@ -297,7 +320,6 @@ const Purchases = () => {
                 />
               </div>
             </div>
-
             <div className="space-y-2">
               <Label>Supplier *</Label>
               <Select
@@ -309,14 +331,13 @@ const Purchases = () => {
                 </SelectTrigger>
                 <SelectContent>
                   {suppliers.map((s) => (
-                    <SelectItem key={s} value={s}>
-                      {s}
+                    <SelectItem key={s.id} value={s.name}>
+                      {s.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
-
             <div className="space-y-2">
               <Label>Product *</Label>
               <Select
@@ -335,7 +356,6 @@ const Purchases = () => {
                 </SelectContent>
               </Select>
             </div>
-
             {selectedProduct && (
               <div className="rounded-lg border border-border bg-muted/30 p-4">
                 <div className="grid grid-cols-2 gap-2 text-sm">
@@ -350,7 +370,8 @@ const Purchases = () => {
                   <div>
                     <span className="text-muted-foreground">Purchase Rate:</span>{' '}
                     <span className="font-semibold text-primary">
-                      {formatCurrency(selectedProduct.purchaseRate)}
+                      {' '}
+                      {formatCurrency(selectedProduct.purchaseRate)}{' '}
                     </span>
                   </div>
                   <div>
@@ -360,37 +381,34 @@ const Purchases = () => {
                 </div>
               </div>
             )}
-
             <div className="space-y-2">
               <Label>Quantity *</Label>
               <Input
                 type="number"
                 value={newPurchase.quantity || ''}
-                onChange={(e) => setNewPurchase({ ...newPurchase, quantity: parseInt(e.target.value) || 0, })}
+                onChange={(e) =>
+                  setNewPurchase({ ...newPurchase, quantity: parseInt(e.target.value) || 0 })
+                }
                 placeholder="Enter quantity"
               />
             </div>
-
             {selectedProduct && newPurchase.quantity > 0 && (
               <div className="rounded-lg border-2 border-primary/20 bg-primary/5 p-4">
                 <h4 className="mb-2 font-semibold">Calculated Values</h4>
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   <div>
                     <span className="text-muted-foreground">Subtotal:</span>{' '}
-                    <span className="font-medium">
-                      {formatCurrency(calculatedValues.totalValue)}
-                    </span>
+                    <span className="font-medium"> {formatCurrency(calculatedValues.totalValue)} </span>
                   </div>
                   <div>
                     <span className="text-muted-foreground">GST Amount:</span>{' '}
-                    <span className="font-medium">
-                      {formatCurrency(calculatedValues.gstAmount)}
-                    </span>
+                    <span className="font-medium"> {formatCurrency(calculatedValues.gstAmount)} </span>
                   </div>
                   <div className="col-span-2 border-t border-border pt-2 mt-2">
                     <span className="text-muted-foreground">Grand Total:</span>{' '}
                     <span className="text-lg font-bold text-primary">
-                      {formatCurrency(calculatedValues.grandTotal)}
+                      {' '}
+                      {formatCurrency(calculatedValues.grandTotal)}{' '}
                     </span>
                   </div>
                 </div>
@@ -399,7 +417,8 @@ const Purchases = () => {
           </div>
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
-              Cancel
+              {' '}
+              Cancel{' '}
             </Button>
             <Button onClick={handleAddPurchase}>Record Purchase</Button>
           </div>

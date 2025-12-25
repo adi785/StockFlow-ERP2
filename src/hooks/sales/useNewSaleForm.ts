@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useERPStore } from '@/store/erpStore';
-import { getProductById, getAvailableStock } from '@/lib/erpCalculations'; // Fixed import
+import { getProductById, getAvailableStock } from '@/lib/erpCalculations';
 import { generateInvoiceNo } from '@/lib/formatters';
 import { toast } from 'sonner';
 import { Product, Purchase, Sale } from '@/types/erp';
@@ -23,21 +23,23 @@ export const useNewSaleForm = ({ sales, products, purchases, addSale, onSuccess 
   });
 
   const selectedProduct = useMemo(
-    () => newSale.productId ? getProductById(products, newSale.productId) : null,
+    () => (newSale.productId ? getProductById(products, newSale.productId) : null),
     [products, newSale.productId]
   );
 
   const availableStock = useMemo(
-    () => newSale.productId ? getAvailableStock(products, purchases, sales, newSale.productId) : 0,
-    [products, purchases, sales, newSale.productId] // Added missing dependencies
+    () => (newSale.productId ? getAvailableStock(products, purchases, sales, newSale.productId) : 0),
+    [products, purchases, sales, newSale.productId]
   );
 
   const calculatedValues = useMemo(() => {
     if (!selectedProduct) {
       return { sellingRate: 0, totalValue: 0, gstAmount: 0, grandTotal: 0 };
     }
+
     const totalValue = selectedProduct.sellingRate * newSale.quantity;
     const gstAmount = (totalValue * selectedProduct.gstPercent) / 100;
+
     return {
       sellingRate: selectedProduct.sellingRate,
       totalValue,
@@ -53,10 +55,12 @@ export const useNewSaleForm = ({ sales, products, purchases, addSale, onSuccess 
       toast.error('Please fill in all required fields');
       return;
     }
+
     if (newSale.quantity <= 0) {
       toast.error('Quantity must be greater than 0');
       return;
     }
+
     if (newSale.quantity > availableStock) {
       toast.error(`Insufficient stock. Available: ${availableStock} units`);
       return;
@@ -77,8 +81,10 @@ export const useNewSaleForm = ({ sales, products, purchases, addSale, onSuccess 
 
       toast.success('Sale recorded successfully - Stock updated');
       onSuccess(); // Close dialog and reset form
+
+      // Generate next invoice number
       setNewSale({
-        invoiceNo: generateInvoiceNo('SAL', sales.length + 2), // Generate next invoice number
+        invoiceNo: generateInvoiceNo('SAL', sales.length + 2),
         customer: '',
         productId: '',
         quantity: 0,

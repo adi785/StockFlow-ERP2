@@ -250,17 +250,6 @@ export const suppliers = [
   'Brooke Bond India',
 ];
 
-export const customers = [
-  'Sharma Kirana Store',
-  'Gupta General Store',
-  'Patel Supermart',
-  'Metro Wholesale',
-  'Singh Mart',
-  'Verma Traders',
-  'Kumar Retail',
-  'City Supermarket',
-];
-
 export const categories = [
   'Biscuits',
   'Instant Food',
