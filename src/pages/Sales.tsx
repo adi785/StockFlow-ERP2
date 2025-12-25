@@ -3,7 +3,8 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useERPStore, getProductById, getAvailableStock } from '@/store/erpStore';
+import { useERPStore } from '@/store/erpStore';
+import { getProductById, getAvailableStock } from '@/lib/erpCalculations'; // Updated import path
 import { formatCurrency, formatDate, generateInvoiceNo } from '@/lib/formatters';
 import { Plus, Trash2, Search, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
@@ -208,7 +209,7 @@ const Sales = () => {
                         {formatCurrency(sale.gstAmount)}
                       </td>
                       <td className="px-4 py-2.5 text-right tabular-nums font-semibold text-green-600">
-                        {formatCurrency(sale.grandTotal)}
+                        {formatCurrency(calculatedValues.grandTotal)}
                       </td>
                       <td className="px-4 py-2.5">
                         <div className="flex items-center justify-center">

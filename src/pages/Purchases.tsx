@@ -3,7 +3,8 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useERPStore, getProductById } from '@/store/erpStore';
+import { useERPStore } from '@/store/erpStore';
+import { getProductById } from '@/lib/erpCalculations'; // Updated import path
 import { formatCurrency, formatDate, generateInvoiceNo } from '@/lib/formatters';
 import { Plus, Trash2, Search } from 'lucide-react';
 import { toast } from 'sonner';

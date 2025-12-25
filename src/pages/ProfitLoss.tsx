@@ -1,7 +1,8 @@
 import { useMemo, useEffect } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
-import { useERPStore, computeProfitLossItems } from '@/store/erpStore';
+import { useERPStore } from '@/store/erpStore';
+import { computeProfitLossItems } from '@/lib/erpCalculations'; // Updated import path
 import { formatCurrency, formatPercent } from '@/lib/formatters';
 import { TrendingUp, TrendingDown, IndianRupee, BarChart3 } from 'lucide-react';
 

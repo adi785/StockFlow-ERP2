@@ -3,7 +3,8 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Input } from '@/components/ui/input';
 import { StockBadge } from '@/components/ui/stock-badge';
-import { useERPStore, computeStockItems } from '@/store/erpStore';
+import { useERPStore } from '@/store/erpStore';
+import { computeStockItems } from '@/lib/erpCalculations'; // Updated import path
 import { formatNumber } from '@/lib/formatters';
 import { Search, Warehouse, AlertTriangle, XCircle, CheckCircle } from 'lucide-react';
 

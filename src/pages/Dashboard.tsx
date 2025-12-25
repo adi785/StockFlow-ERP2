@@ -3,7 +3,8 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { StatCard } from '@/components/ui/stat-card';
 import { StockBadge } from '@/components/ui/stock-badge';
-import { useERPStore, computeStockItems, computeProfitLossItems, computeDashboardStats } from '@/store/erpStore';
+import { useERPStore } from '@/store/erpStore';
+import { computeStockItems, computeProfitLossItems, computeDashboardStats } from '@/lib/erpCalculations'; // Updated import path
 import { formatCurrency, formatNumber } from '@/lib/formatters';
 import {
   Package,
