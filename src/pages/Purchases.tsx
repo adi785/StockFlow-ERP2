@@ -4,25 +4,26 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useERPStore } from '@/store/erpStore';
-import { getProductById } from '@/lib/erpCalculations'; // Updated import path
+import { getProductById } from '@/lib/erpCalculations';
 import { formatCurrency, formatDate, generateInvoiceNo } from '@/lib/formatters';
 import { Plus, Trash2, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { suppliers } from '@/data/mockData';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
+
+const purchaseSchema = z.object({
+  supplier: z.string().min(1, 'Supplier is required'),
+  productId: z.string().min(1, 'Product is required'),
+  quantity: z.number().min(1, 'Quantity must be at least 1'),
+  date: z.string().min(1, 'Date is required'),
+});
+
+type PurchaseFormValues = z.infer<typeof purchaseSchema>;
 
 const Purchases = () => {
   const purchases = useERPStore((state) => state.purchases);
@@ -30,31 +31,37 @@ const Purchases = () => {
   const addPurchase = useERPStore((state) => state.addPurchase);
   const deletePurchase = useERPStore((state) => state.deletePurchase);
   const fetchAllData = useERPStore((state) => state.fetchAllData);
-
+  
   useEffect(() => {
     fetchAllData();
   }, [fetchAllData]);
-
+  
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [newPurchase, setNewPurchase] = useState({
-    invoiceNo: generateInvoiceNo('PUR', purchases.length + 1),
-    supplier: '',
-    productId: '',
-    quantity: 0,
-    date: new Date().toISOString().split('T')[0],
+  
+  const { register, handleSubmit, watch, reset, formState: { errors } } = useForm<PurchaseFormValues>({
+    resolver: zodResolver(purchaseSchema),
+    defaultValues: {
+      invoiceNo: generateInvoiceNo('PUR'),
+      supplier: '',
+      productId: '',
+      quantity: 0,
+      date: new Date().toISOString().split('T')[0],
+    }
   });
-
+  
+  const watchedFields = watch();
   const selectedProduct = useMemo(
-    () => newPurchase.productId ? getProductById(products, newPurchase.productId) : null,
-    [products, newPurchase.productId]
+    () => watchedFields.productId ? getProductById(products, watchedFields.productId) : null,
+    [products, watchedFields.productId]
   );
-
+  
   const calculatedValues = useMemo(() => {
-    if (!selectedProduct) {
+    if (!selectedProduct || !watchedFields.quantity) {
       return { purchaseRate: 0, totalValue: 0, gstAmount: 0, grandTotal: 0 };
     }
-    const totalValue = selectedProduct.purchaseRate * newPurchase.quantity;
+    
+    const totalValue = selectedProduct.purchaseRate * watchedFields.quantity;
     const gstAmount = (totalValue * selectedProduct.gstPercent) / 100;
     return {
       purchaseRate: selectedProduct.purchaseRate,
@@ -62,50 +69,42 @@ const Purchases = () => {
       gstAmount,
       grandTotal: totalValue + gstAmount,
     };
-  }, [selectedProduct, newPurchase.quantity]);
-
+  }, [selectedProduct, watchedFields.quantity]);
+  
   const filteredPurchases = useMemo(
-    () => purchases.filter(
-      (p) =>
-        p.invoiceNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        p.supplier.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        p.productId.toLowerCase().includes(searchTerm.toLowerCase())
-    ),
+    () =>
+      purchases.filter(
+        (p) =>
+          p.invoiceNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          p.supplier.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          p.productId.toLowerCase().includes(searchTerm.toLowerCase())
+      ),
     [purchases, searchTerm]
   );
-
+  
   const handleDelete = (id: string, invoiceNo: string) => {
     if (confirm(`Are you sure you want to delete purchase "${invoiceNo}"?`)) {
       deletePurchase(id);
       toast.success('Purchase deleted successfully');
     }
   };
-
-  const handleAddPurchase = () => {
-    if (!newPurchase.supplier || !newPurchase.productId) {
-      toast.error('Please fill in all required fields');
-      return;
-    }
-    if (newPurchase.quantity <= 0) {
-      toast.error('Quantity must be greater than 0');
-      return;
-    }
-
+  
+  const onSubmit = (data: PurchaseFormValues) => {
     addPurchase({
-      invoiceNo: newPurchase.invoiceNo,
-      supplier: newPurchase.supplier,
-      productId: newPurchase.productId,
-      quantity: newPurchase.quantity,
+      invoiceNo: generateInvoiceNo('PUR'),
+      supplier: data.supplier,
+      productId: data.productId,
+      quantity: data.quantity,
       purchaseRate: calculatedValues.purchaseRate,
       totalValue: calculatedValues.totalValue,
       gstAmount: calculatedValues.gstAmount,
       grandTotal: calculatedValues.grandTotal,
-      date: new Date(newPurchase.date),
+      date: new Date(data.date),
     });
-
+    
     setIsAddDialogOpen(false);
-    setNewPurchase({
-      invoiceNo: generateInvoiceNo('PUR', purchases.length + 2),
+    reset({
+      invoiceNo: generateInvoiceNo('PUR'),
       supplier: '',
       productId: '',
       quantity: 0,
@@ -113,7 +112,7 @@ const Purchases = () => {
     });
     toast.success('Purchase recorded successfully - Stock updated');
   };
-
+  
   return (
     <AppLayout>
       <PageHeader
@@ -121,12 +120,10 @@ const Purchases = () => {
         description="Record stock purchases from suppliers"
         actions={
           <Button onClick={() => setIsAddDialogOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            New Purchase
+            <Plus className="mr-2 h-4 w-4" /> New Purchase
           </Button>
         }
       />
-
       <div className="p-6">
         {/* Search Bar */}
         <div className="mb-4 flex items-center gap-4">
@@ -143,7 +140,7 @@ const Purchases = () => {
             {filteredPurchases.length} records
           </div>
         </div>
-
+        
         {/* Data Grid */}
         <div className="rounded-lg border border-border bg-card overflow-hidden shadow-card">
           <div className="overflow-x-auto scrollbar-thin">
@@ -167,10 +164,7 @@ const Purchases = () => {
                 {filteredPurchases.map((purchase) => {
                   const product = getProductById(products, purchase.productId);
                   return (
-                    <tr
-                      key={purchase.id}
-                      className="grid-row hover:bg-muted/30 transition-colors"
-                    >
+                    <tr key={purchase.id} className="grid-row hover:bg-muted/30 transition-colors">
                       <td className="px-4 py-2.5 text-muted-foreground">
                         {formatDate(purchase.date)}
                       </td>
@@ -205,9 +199,7 @@ const Purchases = () => {
                             size="icon"
                             variant="ghost"
                             className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
-                            onClick={() =>
-                              handleDelete(purchase.id, purchase.invoiceNo)
-                            }
+                            onClick={() => handleDelete(purchase.id, purchase.invoiceNo)}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -247,43 +239,36 @@ const Purchases = () => {
           </div>
         </div>
       </div>
-
+      
       {/* Add Purchase Dialog */}
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>New Purchase Entry</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-4">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 py-4">
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Invoice No</Label>
-                <Input
-                  value={newPurchase.invoiceNo}
-                  onChange={(e) =>
-                    setNewPurchase({ ...newPurchase, invoiceNo: e.target.value })
-                  }
-                />
-              </div>
               <div className="space-y-2">
                 <Label>Date</Label>
                 <Input
                   type="date"
-                  value={newPurchase.date}
-                  onChange={(e) =>
-                    setNewPurchase({ ...newPurchase, date: e.target.value })
-                  }
+                  {...register('date')}
                 />
+                {errors.date && (
+                  <p className="text-sm text-destructive">{errors.date.message}</p>
+                )}
               </div>
             </div>
-
             <div className="space-y-2">
               <Label>Supplier *</Label>
               <Select
-                value={newPurchase.supplier}
-                onValueChange={(value) =>
-                  setNewPurchase({ ...newPurchase, supplier: value })
-                }
+                onValueChange={(value) => {
+                  reset({
+                    ...watchedFields,
+                    supplier: value
+                  });
+                }}
+                value={watchedFields.supplier}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select supplier" />
@@ -296,15 +281,20 @@ const Purchases = () => {
                   ))}
                 </SelectContent>
               </Select>
+              {errors.supplier && (
+                <p className="text-sm text-destructive">{errors.supplier.message}</p>
+              )}
             </div>
-
             <div className="space-y-2">
               <Label>Product *</Label>
               <Select
-                value={newPurchase.productId}
-                onValueChange={(value) =>
-                  setNewPurchase({ ...newPurchase, productId: value })
-                }
+                onValueChange={(value) => {
+                  reset({
+                    ...watchedFields,
+                    productId: value
+                  });
+                }}
+                value={watchedFields.productId}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select product" />
@@ -317,8 +307,10 @@ const Purchases = () => {
                   ))}
                 </SelectContent>
               </Select>
+              {errors.productId && (
+                <p className="text-sm text-destructive">{errors.productId.message}</p>
+              )}
             </div>
-
             {selectedProduct && (
               <div className="rounded-lg border border-border bg-muted/30 p-4">
                 <div className="grid grid-cols-2 gap-2 text-sm">
@@ -343,23 +335,18 @@ const Purchases = () => {
                 </div>
               </div>
             )}
-
             <div className="space-y-2">
               <Label>Quantity *</Label>
               <Input
                 type="number"
-                value={newPurchase.quantity || ''}
-                onChange={(e) =>
-                  setNewPurchase({
-                    ...newPurchase,
-                    quantity: parseInt(e.target.value) || 0,
-                  })
-                }
+                {...register('quantity', { valueAsNumber: true })}
                 placeholder="Enter quantity"
               />
+              {errors.quantity && (
+                <p className="text-sm text-destructive">{errors.quantity.message}</p>
+              )}
             </div>
-
-            {selectedProduct && newPurchase.quantity > 0 && (
+            {selectedProduct && watchedFields.quantity > 0 && (
               <div className="rounded-lg border-2 border-primary/20 bg-primary/5 p-4">
                 <h4 className="mb-2 font-semibold">Calculated Values</h4>
                 <div className="grid grid-cols-2 gap-2 text-sm">
@@ -384,13 +371,17 @@ const Purchases = () => {
                 </div>
               </div>
             )}
-          </div>
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleAddPurchase}>Record Purchase</Button>
-          </div>
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsAddDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit">Record Purchase</Button>
+            </div>
+          </form>
         </DialogContent>
       </Dialog>
     </AppLayout>

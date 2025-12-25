@@ -1,3 +1,5 @@
+import { format } from 'date-fns';
+
 // Currency formatter for Indian Rupees
 export const formatCurrency = (value: number): string => {
   return new Intl.NumberFormat('en-IN', {
@@ -36,15 +38,30 @@ export const formatShortDate = (date: Date): string => {
   }).format(date);
 };
 
-// Generate unique invoice number
-export const generateInvoiceNo = (prefix: string, count: number): string => {
-  const year = new Date().getFullYear();
-  const paddedCount = String(count).padStart(3, '0');
-  return `${prefix}-${year}-${paddedCount}`;
+// Generate unique invoice number with timestamp to prevent collisions
+export const generateInvoiceNo = (prefix: string): string => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  const seconds = String(now.getSeconds()).padStart(2, '0');
+  const timestamp = `${year}${month}${day}${hours}${minutes}${seconds}`;
+  
+  return `${prefix}-${timestamp}`;
 };
 
-// Generate unique product ID
-export const generateProductId = (count: number): string => {
-  const paddedCount = String(count).padStart(3, '0');
-  return `PRD${paddedCount}`;
+// Generate unique product ID with timestamp to prevent collisions
+export const generateProductId = (): string => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  const seconds = String(now.getSeconds()).padStart(2, '0');
+  const timestamp = `${year}${month}${day}${hours}${minutes}${seconds}`;
+  
+  return `PRD-${timestamp}`;
 };

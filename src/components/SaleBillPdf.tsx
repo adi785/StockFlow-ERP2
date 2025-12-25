@@ -23,7 +23,14 @@ export const SaleBillPdf = React.forwardRef<HTMLDivElement, SaleBillPdfProps>(
     let totalGrandTotal = 0;
 
     return (
-      <div ref={ref} className="p-8 bg-white text-gray-900 w-[210mm] min-h-[297mm] mx-auto shadow-lg">
+      <div ref={ref} className="p-8 bg-white text-gray-900 w-[210mm] min-h-[297mm] mx-auto shadow-lg relative">
+        {/* Watermark */}
+        <div className="absolute inset-0 flex items-center justify-center opacity-10 pointer-events-none">
+          <div className="text-9xl font-bold transform -rotate-45">
+            UNOFFICIAL COPY
+          </div>
+        </div>
+        
         <div className="flex justify-between items-center border-b-2 border-gray-300 pb-4 mb-6">
           <div>
             <h1 className="text-3xl font-bold text-primary">StockFlow ERP</h1>
@@ -35,7 +42,7 @@ export const SaleBillPdf = React.forwardRef<HTMLDivElement, SaleBillPdfProps>(
             <p className="text-sm text-gray-700">Date: <span className="font-medium">{formatDate(saleDate)}</span></p>
           </div>
         </div>
-
+        
         <div className="grid grid-cols-2 gap-4 mb-8">
           <div>
             <h3 className="text-lg font-semibold text-gray-800 mb-2">Bill To:</h3>
@@ -53,7 +60,7 @@ export const SaleBillPdf = React.forwardRef<HTMLDivElement, SaleBillPdfProps>(
             <p className="text-sm text-gray-600">GSTIN: XXXXXXXXXXXXXXX</p>
           </div>
         </div>
-
+        
         <table className="w-full border-collapse mb-8">
           <thead>
             <tr className="bg-gray-100 border-b border-gray-300">
@@ -71,15 +78,14 @@ export const SaleBillPdf = React.forwardRef<HTMLDivElement, SaleBillPdfProps>(
               const gstRate = product?.gstPercent || 0;
               const sellingRate = saleItem.sellingRate; // Use sellingRate from saleItem
               const quantity = saleItem.quantity;
-
               const itemTotal = sellingRate * quantity;
               const itemGstAmount = (itemTotal * gstRate) / 100;
               const itemGrandTotal = itemTotal + itemGstAmount;
-
+              
               totalSubtotal += itemTotal;
               totalGstAmount += itemGstAmount;
               totalGrandTotal += itemGrandTotal;
-
+              
               return (
                 <tr key={saleItem.id} className="border-b border-gray-200">
                   <td className="py-2 px-4 text-sm">{index + 1}</td>
@@ -93,7 +99,7 @@ export const SaleBillPdf = React.forwardRef<HTMLDivElement, SaleBillPdfProps>(
             })}
           </tbody>
         </table>
-
+        
         <div className="flex justify-end mb-8">
           <div className="w-full max-w-xs">
             <div className="flex justify-between py-1 border-b border-gray-200">
@@ -110,10 +116,10 @@ export const SaleBillPdf = React.forwardRef<HTMLDivElement, SaleBillPdfProps>(
             </div>
           </div>
         </div>
-
+        
         <div className="text-center text-xs text-gray-500 pt-8 border-t border-gray-200">
           <p>Thank you for your business!</p>
-          <p>This is a computer generated invoice and does not require a signature.</p>
+          <p className="mt-1 font-semibold">NOTE: This is a computer-generated invoice and does not require a signature. This is an unofficial copy for reference only.</p>
         </div>
       </div>
     );

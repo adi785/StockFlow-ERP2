@@ -1,25 +1,14 @@
 import React from 'react';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, } from '@/components/ui/select';
 import { AlertCircle } from 'lucide-react';
 import { formatCurrency } from '@/lib/formatters';
 import { customers } from '@/data/mockData';
 import { Product, Purchase, Sale } from '@/types/erp';
-import { getAvailableStock } from '@/lib/erpCalculations'; // Added missing import
+import { getAvailableStock } from '@/lib/erpCalculations';
 
 interface AddSaleDialogProps {
   isOpen: boolean;
@@ -79,9 +68,8 @@ export const AddSaleDialog: React.FC<AddSaleDialogProps> = ({
               <Label>Invoice No</Label>
               <Input
                 value={newSale.invoiceNo}
-                onChange={(e) =>
-                  setNewSale({ ...newSale, invoiceNo: e.target.value })
-                }
+                onChange={(e) => setNewSale({ ...newSale, invoiceNo: e.target.value })}
+                readOnly
               />
             </div>
             <div className="space-y-2">
@@ -89,20 +77,15 @@ export const AddSaleDialog: React.FC<AddSaleDialogProps> = ({
               <Input
                 type="date"
                 value={newSale.date}
-                onChange={(e) =>
-                  setNewSale({ ...newSale, date: e.target.value })
-                }
+                onChange={(e) => setNewSale({ ...newSale, date: e.target.value })}
               />
             </div>
           </div>
-
           <div className="space-y-2">
             <Label>Customer *</Label>
             <Select
               value={newSale.customer}
-              onValueChange={(value) =>
-                setNewSale({ ...newSale, customer: value })
-              }
+              onValueChange={(value) => setNewSale({ ...newSale, customer: value })}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select customer" />
@@ -116,14 +99,11 @@ export const AddSaleDialog: React.FC<AddSaleDialogProps> = ({
               </SelectContent>
             </Select>
           </div>
-
           <div className="space-y-2">
             <Label>Product *</Label>
             <Select
               value={newSale.productId}
-              onValueChange={(value) =>
-                setNewSale({ ...newSale, productId: value, quantity: 0 })
-              }
+              onValueChange={(value) => setNewSale({ ...newSale, productId: value, quantity: 0 })}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select product" />
@@ -132,11 +112,7 @@ export const AddSaleDialog: React.FC<AddSaleDialogProps> = ({
                 {products.map((p) => {
                   const stock = getAvailableStock(products, purchases, sales, p.productId);
                   return (
-                    <SelectItem
-                      key={p.productId}
-                      value={p.productId}
-                      disabled={stock <= 0}
-                    >
+                    <SelectItem key={p.productId} value={p.productId} disabled={stock <= 0}>
                       {p.productId} - {p.name} (Stock: {stock})
                     </SelectItem>
                   );
@@ -144,7 +120,6 @@ export const AddSaleDialog: React.FC<AddSaleDialogProps> = ({
               </SelectContent>
             </Select>
           </div>
-
           {selectedProduct && (
             <div className="rounded-lg border border-border bg-muted/30 p-4">
               <div className="grid grid-cols-2 gap-2 text-sm">
@@ -164,29 +139,19 @@ export const AddSaleDialog: React.FC<AddSaleDialogProps> = ({
                 </div>
                 <div>
                   <span className="text-muted-foreground">Available Stock:</span>{' '}
-                  <span
-                    className={`font-semibold ${
-                      availableStock > 0 ? 'text-green-600' : 'text-red-600'
-                    }`}
-                  >
+                  <span className={`font-semibold ${availableStock > 0 ? 'text-green-600' : 'text-red-600'}`}>
                     {availableStock} units
                   </span>
                 </div>
               </div>
             </div>
           )}
-
           <div className="space-y-2">
             <Label>Quantity *</Label>
             <Input
               type="number"
               value={newSale.quantity || ''}
-              onChange={(e) =>
-                setNewSale({
-                  ...newSale,
-                  quantity: parseInt(e.target.value) || 0,
-                })
-              }
+              onChange={(e) => setNewSale({ ...newSale, quantity: parseInt(e.target.value) || 0 })}
               placeholder="Enter quantity"
               max={availableStock}
             />
@@ -197,8 +162,7 @@ export const AddSaleDialog: React.FC<AddSaleDialogProps> = ({
               </div>
             )}
           </div>
-
-          {selectedProduct && isQuantityValid && (
+          {selectedProduct && newSale.quantity > 0 && (
             <div className="rounded-lg border-2 border-green-200 bg-green-50 p-4 dark:border-green-900/50 dark:bg-green-900/20">
               <h4 className="mb-2 font-semibold text-green-800 dark:text-green-200">
                 Calculated Values
