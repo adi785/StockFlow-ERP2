@@ -1,6 +1,6 @@
 import React from 'react'
 import { createRoot } from 'react-dom/client'
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom' // Added Outlet
 import App from './App'
 import LoginPage from './pages/Login'
 import SignupPage from './pages/Signup'
