@@ -9,6 +9,65 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      customers: {
+        Row: {
+          address: string | null
+          city: string | null
+          contact_person: string | null
+          created_at: string | null
+          email: string | null
+          gstin: string | null
+          id: string
+          name: string
+          opening_balance: number | null
+          phone: string | null
+          pincode: string | null
+          state: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          address?: string | null
+          city?: string | null
+          contact_person?: string | null
+          created_at?: string | null
+          email?: string | null
+          gstin?: string | null
+          id?: string
+          name: string
+          opening_balance?: number | null
+          phone?: string | null
+          pincode?: string | null
+          state?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          address?: string | null
+          city?: string | null
+          contact_person?: string | null
+          created_at?: string | null
+          email?: string | null
+          gstin?: string | null
+          id?: string
+          name?: string
+          opening_balance?: number | null
+          phone?: string | null
+          pincode?: string | null
+          state?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customers_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       products: {
         Row: {
           brand: string
@@ -62,7 +121,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
-          },
+          }
         ]
       }
       profiles: {
@@ -94,7 +153,7 @@ export type Database = {
             isOneToOne: true
             referencedRelation: "users"
             referencedColumns: ["id"]
-          },
+          }
         ]
       }
       purchases: {
@@ -147,7 +206,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
-          },
+          }
         ]
       }
       sales: {
@@ -200,7 +259,66 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
-          },
+          }
+        ]
+      }
+      suppliers: {
+        Row: {
+          address: string | null
+          city: string | null
+          contact_person: string | null
+          created_at: string | null
+          email: string | null
+          gstin: string | null
+          id: string
+          name: string
+          opening_balance: number | null
+          phone: string | null
+          pincode: string | null
+          state: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          address?: string | null
+          city?: string | null
+          contact_person?: string | null
+          created_at?: string | null
+          email?: string | null
+          gstin?: string | null
+          id?: string
+          name: string
+          opening_balance?: number | null
+          phone?: string | null
+          pincode?: string | null
+          state?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          address?: string | null
+          city?: string | null
+          contact_person?: string | null
+          created_at?: string | null
+          email?: string | null
+          gstin?: string | null
+          id?: string
+          name?: string
+          opening_balance?: number | null
+          phone?: string | null
+          pincode?: string | null
+          state?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "suppliers_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
         ]
       }
     }
@@ -233,8 +351,8 @@ export type Tables<
 > = TableName extends keyof PublicSchema["Tables"]
   ? PublicSchema["Tables"][TableName]["Row"]
   : TableName extends keyof PublicSchema["Views"]
-    ? PublicSchema["Views"][TableName]["Row"]
-    : never
+  ? PublicSchema["Views"][TableName]["Row"]
+  : never
 
 export type TablesInsert<
   TableName extends keyof PublicSchema["Tables"],
@@ -244,5 +362,6 @@ export type TablesUpdate<
   TableName extends keyof PublicSchema["Tables"],
 > = PublicSchema["Tables"][TableName]["Update"]
 
-export type Enums<TableName extends keyof PublicSchema["Enums"]> =
-  PublicSchema["Enums"][TableName]
+export type Enums<
+  TableName extends keyof PublicSchema["Enums"]
+> = PublicSchema["Enums"][TableName]

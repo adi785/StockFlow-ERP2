@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Package, ShoppingCart, TrendingUp, Warehouse, BarChart3, Settings, LogOut } from 'lucide-react';
+import { LayoutDashboard, Package, ShoppingCart, TrendingUp, Warehouse, BarChart3, Settings, LogOut, Users, Truck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,8 @@ import { toast } from 'sonner';
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'Products', href: '/products', icon: Package },
+  { name: 'Customers', href: '/customers', icon: Users },
+  { name: 'Suppliers', href: '/suppliers', icon: Truck },
   { name: 'Purchases', href: '/purchases', icon: ShoppingCart },
   { name: 'Sales', href: '/sales', icon: TrendingUp },
   { name: 'Stock', href: '/stock', icon: Warehouse },
@@ -40,7 +42,7 @@ export function AppSidebar() {
           <p className="text-xs text-sidebar-foreground/60">ERP System</p>
         </div>
       </div>
-      
+
       {/* Navigation */}
       <nav className="flex-1 space-y-1 px-3 py-4">
         {navigation.map((item) => {
@@ -62,7 +64,7 @@ export function AppSidebar() {
           );
         })}
       </nav>
-      
+
       {/* Footer */}
       <div className="border-t border-sidebar-border p-4">
         <Button
@@ -73,7 +75,6 @@ export function AppSidebar() {
           <LogOut className="h-5 w-5" />
           Logout
         </Button>
-        
         <Link
           to="/settings"
           className="mt-2 flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-foreground/70 transition-all duration-150 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
@@ -81,10 +82,7 @@ export function AppSidebar() {
           <Settings className="h-5 w-5" />
           Settings
         </Link>
-        
-        <div className="mt-3 px-3 text-xs text-sidebar-foreground/40">
-          v1.0.0 • Distributor Edition
-        </div>
+        <div className="mt-3 px-3 text-xs text-sidebar-foreground/40"> v1.0.0 • Distributor Edition </div>
       </div>
     </aside>
   );

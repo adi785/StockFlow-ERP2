@@ -1,19 +1,21 @@
 import React from 'react'
 import { createRoot } from 'react-dom/client'
-import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom' // Added Outlet
+import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom'
 import App from './App'
 import LoginPage from './pages/Login'
 import SignupPage from './pages/Signup'
 import ProtectedRoute from './components/ProtectedRoute'
 import Dashboard from './pages/Dashboard'
 import Products from './pages/Products'
+import Customers from './pages/Customers'
+import Suppliers from './pages/Suppliers'
 import Purchases from './pages/Purchases'
 import Sales from './pages/Sales'
 import Stock from './pages/Stock'
 import ProfitLoss from './pages/ProfitLoss'
 import Settings from './pages/Settings'
 import NotFound from './pages/NotFound'
-import { AppLayout } from './components/layout/AppLayout' // Import AppLayout
+import { AppLayout } from './components/layout/AppLayout'
 import './index.css'
 
 const root = createRoot(document.getElementById('root')!)
@@ -21,17 +23,19 @@ const root = createRoot(document.getElementById('root')!)
 root.render(
   <React.StrictMode>
     <BrowserRouter>
-      <App> {/* App now wraps everything to provide global contexts */}
+      <App>
         <Routes>
           {/* Public routes */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
           <Route path="/404" element={<NotFound />} />
-
+          
           {/* Protected routes wrapped by ProtectedRoute and AppLayout */}
           <Route element={<ProtectedRoute><AppLayout><Outlet /></AppLayout></ProtectedRoute>}>
             <Route path="/" element={<Dashboard />} />
             <Route path="/products" element={<Products />} />
+            <Route path="/customers" element={<Customers />} />
+            <Route path="/suppliers" element={<Suppliers />} />
             <Route path="/purchases" element={<Purchases />} />
             <Route path="/sales" element={<Sales />} />
             <Route path="/stock" element={<Stock />} />
