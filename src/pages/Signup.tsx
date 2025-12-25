@@ -1,71 +1,81 @@
-import React, { useState } from 'react'
-import { Link } from 'react-router-dom'
-import { supabase } from '../lib/supabase' // Correct import path
+import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { supabase } from '../lib/supabase';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { AuthLayout } from '@/components/layout/AuthLayout'; // Import AuthLayout
 
 export default function SignupPage(): JSX.Element {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [message, setMessage] = useState<string | null>(null)
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError(null)
-    setMessage(null)
-    setLoading(true)
+    e.preventDefault();
+    setError(null);
+    setMessage(null);
+    setLoading(true);
 
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-    })
+    });
 
-    setLoading(false)
+    setLoading(false);
     if (error) {
-      setError(error.message)
-      return
+      setError(error.message);
+      return;
     }
 
-    setMessage('Signup successful. Please check your email for confirmation if required.')
-  }
+    setMessage('Signup successful. Please check your email for confirmation if required.');
+  };
 
   return (
-    <main style={{ maxWidth: 420, margin: '48px auto', padding: '0 16px' }}>
-      <h1>Sign up</h1>
-      <form onSubmit={handleSubmit}>
-        <label style={{ display: 'block', marginTop: 12 }}>
-          Email
-          <input
+    <AuthLayout
+      title="Create an Account"
+      description="Enter your details to create a new StockFlow account."
+    >
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="email">Email</Label>
+          <Input
+            id="email"
             type="email"
+            placeholder="m@example.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            style={{ display: 'block', width: '100%', padding: 8, marginTop: 6 }}
           />
-        </label>
+        </div>
 
-        <label style={{ display: 'block', marginTop: 12 }}>
-          Password
-          <input
+        <div className="space-y-2">
+          <Label htmlFor="password">Password</Label>
+          <Input
+            id="password"
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            style={{ display: 'block', width: '100%', padding: 8, marginTop: 6 }}
           />
-        </label>
+        </div>
 
-        {error && <div style={{ color: 'red', marginTop: 12 }}>{error}</div>}
-        {message && <div style={{ color: 'green', marginTop: 12 }}>{message}</div>}
+        {error && <p className="text-sm text-destructive">{error}</p>}
+        {message && <p className="text-sm text-green-600">{message}</p>}
 
-        <button type="submit" disabled={loading} style={{ marginTop: 16, padding: '8px 12px' }}>
-          {loading ? 'Creating…' : 'Create account'}
-        </button>
+        <Button type="submit" className="w-full" disabled={loading}>
+          {loading ? 'Creating account...' : 'Create Account'}
+        </Button>
       </form>
 
-      <p style={{ marginTop: 12 }}>
-        Already have an account? <Link to="/login">Sign in</Link>
+      <p className="mt-4 text-center text-sm text-muted-foreground">
+        Already have an account?{' '}
+        <Link to="/login" className="text-primary hover:underline">
+          Sign In
+        </Link>
       </p>
-    </main>
-  )
+    </AuthLayout>
+  );
 }
