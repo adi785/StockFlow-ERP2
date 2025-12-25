@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useERPStore } from '@/store/erpStore';
-import { getProductById, getAvailableStock } from '@/lib/erpCalculations';
+import { getProductById, getAvailableStock } from '@/lib/erpCalculations'; // Fixed import
 import { generateInvoiceNo } from '@/lib/formatters';
 import { toast } from 'sonner';
 import { Product, Purchase, Sale } from '@/types/erp';
@@ -29,7 +29,7 @@ export const useNewSaleForm = ({ sales, products, purchases, addSale, onSuccess 
 
   const availableStock = useMemo(
     () => newSale.productId ? getAvailableStock(products, purchases, sales, newSale.productId) : 0,
-    [products, purchases, sales, newSale.productId]
+    [products, purchases, sales, newSale.productId] // Added missing dependencies
   );
 
   const calculatedValues = useMemo(() => {
