@@ -2,24 +2,45 @@ import { useRef, useState } from 'react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { toast } from 'sonner';
-import { SaleBillPdf } from '@/components/SaleBillPdf';
-import { Sale, Product } from '@/types/erp';
+import { ErpDocumentPdf } from '@/components/ErpDocumentPdf';
+import { Purchase, Sale, Product } from '@/types/erp';
 
-export const usePdfGenerator = (sales: Sale[], products: Product[]) => {
+export const usePdfGenerator = (purchases: Purchase[], sales: Product[]) => {
   const pdfContentRef = useRef<HTMLDivElement>(null);
-  const [pdfInvoiceData, setPdfInvoiceData] = useState<{ invoiceSales: Sale[]; productsMap: Map<string, Product> } | null>(null);
+  const [pdfInvoiceData, setPdfInvoiceData] = useState<{
+    documentType: 'purchase' | 'sale';
+    invoiceData: Purchase[] | Sale[];
+    productsMap: Map<string, Product>;
+  } | null>(null);
 
-  const handleDownloadPdf = async (invoiceNo: string) => {
-    const salesForInvoice = sales.filter(s => s.invoiceNo === invoiceNo);
-    if (salesForInvoice.length === 0) {
-      toast.error('No sales found for this invoice number.');
+  const handleDownloadPdf = async (
+    documentType: 'purchase' | 'sale',
+    invoiceNo: string,
+    purchases: Purchase[],
+    sales: Sale[],
+    products: Product[]
+  ) => {
+    let dataForInvoice: Purchase[] | Sale[] = [];
+    
+    if (documentType === 'purchase') {
+      dataForInvoice = purchases.filter(p => p.invoiceNo === invoiceNo);
+    } else {
+      dataForInvoice = sales.filter(s => s.invoiceNo === invoiceNo);
+    }
+
+    if (dataForInvoice.length === 0) {
+      toast.error(`No ${documentType} found for this invoice number.`);
       return;
     }
 
     const productsMap = new Map<string, Product>();
     products.forEach(p => productsMap.set(p.productId, p));
 
-    setPdfInvoiceData({ invoiceSales: salesForInvoice, productsMap });
+    setPdfInvoiceData({
+      documentType,
+      invoiceData: dataForInvoice,
+      productsMap
+    });
 
     // Wait for the component to render with the new data
     setTimeout(async () => {
@@ -44,8 +65,8 @@ export const usePdfGenerator = (sales: Sale[], products: Product[]) => {
           heightLeft -= pageHeight;
         }
 
-        pdf.save(`Invoice_${invoiceNo}.pdf`);
-        toast.success(`Invoice ${invoiceNo} downloaded successfully!`);
+        pdf.save(`${documentType === 'purchase' ? 'Purchase_Order' : 'Invoice'}_${invoiceNo}.pdf`);
+        toast.success(`${documentType === 'purchase' ? 'Purchase Order' : 'Invoice'} ${invoiceNo} downloaded successfully!`);
         setPdfInvoiceData(null); // Clear PDF data after download
       } else {
         toast.error('Failed to generate PDF. Please try again.');

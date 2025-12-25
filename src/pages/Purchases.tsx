@@ -6,24 +6,14 @@ import { Input } from '@/components/ui/input';
 import { useERPStore } from '@/store/erpStore';
 import { getProductById } from '@/lib/erpCalculations';
 import { formatCurrency, formatDate, generateInvoiceNo } from '@/lib/formatters';
-import { Plus, Trash2, Search } from 'lucide-react';
+import { Plus, Trash2, Search, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { suppliers } from '@/data/mockData';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { useForm } from 'react-hook-form';
-import { z } from 'zod';
-import { zodResolver } from '@hookform/resolvers/zod';
-
-const purchaseSchema = z.object({
-  supplier: z.string().min(1, 'Supplier is required'),
-  productId: z.string().min(1, 'Product is required'),
-  quantity: z.number().min(1, 'Quantity must be at least 1'),
-  date: z.string().min(1, 'Date is required'),
-});
-
-type PurchaseFormValues = z.infer<typeof purchaseSchema>;
+import { ErpDocumentPdf } from '@/components/ErpDocumentPdf';
+import { usePdfGenerator } from '@/hooks/erp/usePdfGenerator';
 
 const Purchases = () => {
   const purchases = useERPStore((state) => state.purchases);
@@ -31,37 +21,31 @@ const Purchases = () => {
   const addPurchase = useERPStore((state) => state.addPurchase);
   const deletePurchase = useERPStore((state) => state.deletePurchase);
   const fetchAllData = useERPStore((state) => state.fetchAllData);
-  
+
   useEffect(() => {
     fetchAllData();
   }, [fetchAllData]);
-  
+
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  
-  const { register, handleSubmit, watch, reset, formState: { errors } } = useForm<PurchaseFormValues>({
-    resolver: zodResolver(purchaseSchema),
-    defaultValues: {
-      invoiceNo: generateInvoiceNo('PUR'),
-      supplier: '',
-      productId: '',
-      quantity: 0,
-      date: new Date().toISOString().split('T')[0],
-    }
+  const [newPurchase, setNewPurchase] = useState({
+    invoiceNo: generateInvoiceNo('PUR', purchases.length + 1),
+    supplier: '',
+    productId: '',
+    quantity: 0,
+    date: new Date().toISOString().split('T')[0],
   });
-  
-  const watchedFields = watch();
+
   const selectedProduct = useMemo(
-    () => watchedFields.productId ? getProductById(products, watchedFields.productId) : null,
-    [products, watchedFields.productId]
+    () => newPurchase.productId ? getProductById(products, newPurchase.productId) : null,
+    [products, newPurchase.productId]
   );
-  
+
   const calculatedValues = useMemo(() => {
-    if (!selectedProduct || !watchedFields.quantity) {
+    if (!selectedProduct) {
       return { purchaseRate: 0, totalValue: 0, gstAmount: 0, grandTotal: 0 };
     }
-    
-    const totalValue = selectedProduct.purchaseRate * watchedFields.quantity;
+    const totalValue = selectedProduct.purchaseRate * newPurchase.quantity;
     const gstAmount = (totalValue * selectedProduct.gstPercent) / 100;
     return {
       purchaseRate: selectedProduct.purchaseRate,
@@ -69,42 +53,50 @@ const Purchases = () => {
       gstAmount,
       grandTotal: totalValue + gstAmount,
     };
-  }, [selectedProduct, watchedFields.quantity]);
-  
+  }, [selectedProduct, newPurchase.quantity]);
+
   const filteredPurchases = useMemo(
-    () =>
-      purchases.filter(
-        (p) =>
-          p.invoiceNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          p.supplier.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          p.productId.toLowerCase().includes(searchTerm.toLowerCase())
-      ),
+    () => purchases.filter(
+      (p) => p.invoiceNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        p.supplier.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        p.productId.toLowerCase().includes(searchTerm.toLowerCase())
+    ),
     [purchases, searchTerm]
   );
-  
+
+  // Use PDF generator hook
+  const { pdfContentRef, pdfInvoiceData, handleDownloadPdf } = usePdfGenerator(purchases, products);
+
   const handleDelete = (id: string, invoiceNo: string) => {
     if (confirm(`Are you sure you want to delete purchase "${invoiceNo}"?`)) {
       deletePurchase(id);
       toast.success('Purchase deleted successfully');
     }
   };
-  
-  const onSubmit = (data: PurchaseFormValues) => {
+
+  const handleAddPurchase = () => {
+    if (!newPurchase.supplier || !newPurchase.productId) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+    if (newPurchase.quantity <= 0) {
+      toast.error('Quantity must be greater than 0');
+      return;
+    }
     addPurchase({
-      invoiceNo: generateInvoiceNo('PUR'),
-      supplier: data.supplier,
-      productId: data.productId,
-      quantity: data.quantity,
+      invoiceNo: newPurchase.invoiceNo,
+      supplier: newPurchase.supplier,
+      productId: newPurchase.productId,
+      quantity: newPurchase.quantity,
       purchaseRate: calculatedValues.purchaseRate,
       totalValue: calculatedValues.totalValue,
       gstAmount: calculatedValues.gstAmount,
       grandTotal: calculatedValues.grandTotal,
-      date: new Date(data.date),
+      date: new Date(newPurchase.date),
     });
-    
     setIsAddDialogOpen(false);
-    reset({
-      invoiceNo: generateInvoiceNo('PUR'),
+    setNewPurchase({
+      invoiceNo: generateInvoiceNo('PUR', purchases.length + 2),
       supplier: '',
       productId: '',
       quantity: 0,
@@ -112,7 +104,33 @@ const Purchases = () => {
     });
     toast.success('Purchase recorded successfully - Stock updated');
   };
-  
+
+  // Group purchases by invoice number for display
+  const groupedPurchases = useMemo(() => {
+    const groups: { [key: string]: typeof purchases[0][] } = {};
+    purchases.forEach(purchase => {
+      if (!groups[purchase.invoiceNo]) {
+        groups[purchase.invoiceNo] = [];
+      }
+      groups[purchase.invoiceNo].push(purchase);
+    });
+    // Sort groups by date of the first purchase in descending order
+    return Object.values(groups).sort((a, b) => new Date(b[0].date).getTime() - new Date(a[0].date).getTime());
+  }, [purchases]);
+
+  const filteredGroupedPurchases = useMemo(() => {
+    return groupedPurchases.filter(
+      (group) => {
+        const firstPurchase = group[0];
+        const matchesSearch =
+          firstPurchase.invoiceNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          firstPurchase.supplier.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          group.some(item => item.productId.toLowerCase().includes(searchTerm.toLowerCase()));
+        return matchesSearch;
+      }
+    );
+  }, [groupedPurchases, searchTerm]);
+
   return (
     <AppLayout>
       <PageHeader
@@ -120,10 +138,12 @@ const Purchases = () => {
         description="Record stock purchases from suppliers"
         actions={
           <Button onClick={() => setIsAddDialogOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" /> New Purchase
+            <Plus className="mr-2 h-4 w-4" />
+            New Purchase
           </Button>
         }
       />
+
       <div className="p-6">
         {/* Search Bar */}
         <div className="mb-4 flex items-center gap-4">
@@ -137,10 +157,10 @@ const Purchases = () => {
             />
           </div>
           <div className="text-sm text-muted-foreground">
-            {filteredPurchases.length} records
+            {filteredGroupedPurchases.length} records
           </div>
         </div>
-        
+
         {/* Data Grid */}
         <div className="rounded-lg border border-border bg-card overflow-hidden shadow-card">
           <div className="overflow-x-auto scrollbar-thin">
@@ -150,56 +170,69 @@ const Purchases = () => {
                   <th className="px-4 py-3 text-left font-semibold">Date</th>
                   <th className="px-4 py-3 text-left font-semibold">Invoice No</th>
                   <th className="px-4 py-3 text-left font-semibold">Supplier</th>
-                  <th className="px-4 py-3 text-left font-semibold">Product ID</th>
-                  <th className="px-4 py-3 text-left font-semibold">Product Name</th>
-                  <th className="px-4 py-3 text-right font-semibold">Rate</th>
-                  <th className="px-4 py-3 text-right font-semibold">Qty</th>
-                  <th className="px-4 py-3 text-right font-semibold">Value</th>
-                  <th className="px-4 py-3 text-right font-semibold">GST</th>
+                  <th className="px-4 py-3 text-left font-semibold">Items</th>
+                  <th className="px-4 py-3 text-right font-semibold">Total Qty</th>
+                  <th className="px-4 py-3 text-right font-semibold">Total Value</th>
+                  <th className="px-4 py-3 text-right font-semibold">Total GST</th>
                   <th className="px-4 py-3 text-right font-semibold">Grand Total</th>
-                  <th className="px-4 py-3 text-center font-semibold w-16">Actions</th>
+                  <th className="px-4 py-3 text-center font-semibold w-24">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {filteredPurchases.map((purchase) => {
-                  const product = getProductById(products, purchase.productId);
+                {filteredGroupedPurchases.map((invoiceGroup) => {
+                  const firstPurchase = invoiceGroup[0];
+                  const totalQuantity = invoiceGroup.reduce((sum, p) => sum + p.quantity, 0);
+                  const totalValue = invoiceGroup.reduce((sum, p) => sum + p.totalValue, 0);
+                  const totalGstAmount = invoiceGroup.reduce((sum, p) => sum + p.gstAmount, 0);
+                  const grandTotal = invoiceGroup.reduce((sum, p) => sum + p.grandTotal, 0);
+
                   return (
-                    <tr key={purchase.id} className="grid-row hover:bg-muted/30 transition-colors">
+                    <tr key={firstPurchase.invoiceNo} className="grid-row hover:bg-muted/30 transition-colors">
                       <td className="px-4 py-2.5 text-muted-foreground">
-                        {formatDate(purchase.date)}
+                        {formatDate(firstPurchase.date)}
                       </td>
                       <td className="px-4 py-2.5 font-mono text-xs font-medium text-primary">
-                        {purchase.invoiceNo}
+                        {firstPurchase.invoiceNo}
                       </td>
-                      <td className="px-4 py-2.5">{purchase.supplier}</td>
-                      <td className="px-4 py-2.5 font-mono text-xs">
-                        {purchase.productId}
-                      </td>
-                      <td className="px-4 py-2.5 font-medium">
-                        {product?.name || 'Unknown Product'}
-                      </td>
-                      <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground">
-                        {formatCurrency(purchase.purchaseRate)}
+                      <td className="px-4 py-2.5">{firstPurchase.supplier}</td>
+                      <td className="px-4 py-2.5">
+                        {invoiceGroup.map((item) => {
+                          const product = getProductById(products, item.productId);
+                          return (
+                            <div key={item.id} className="text-xs">
+                              {product?.name || 'Unknown'} ({item.quantity} units)
+                            </div>
+                          );
+                        })}
                       </td>
                       <td className="px-4 py-2.5 text-right tabular-nums font-medium">
-                        {purchase.quantity}
+                        {totalQuantity}
                       </td>
                       <td className="px-4 py-2.5 text-right tabular-nums">
-                        {formatCurrency(purchase.totalValue)}
+                        {formatCurrency(totalValue)}
                       </td>
                       <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground">
-                        {formatCurrency(purchase.gstAmount)}
+                        {formatCurrency(totalGstAmount)}
                       </td>
                       <td className="px-4 py-2.5 text-right tabular-nums font-semibold">
-                        {formatCurrency(purchase.grandTotal)}
+                        {formatCurrency(grandTotal)}
                       </td>
                       <td className="px-4 py-2.5">
-                        <div className="flex items-center justify-center">
+                        <div className="flex items-center justify-center gap-1">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7 text-primary hover:text-primary hover:bg-primary/10"
+                            onClick={() => handleDownloadPdf('purchase', firstPurchase.invoiceNo, purchases, [], products)}
+                            title="Download Purchase Order"
+                          >
+                            <Download className="h-4 w-4" />
+                          </Button>
                           <Button
                             size="icon"
                             variant="ghost"
                             className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
-                            onClick={() => handleDelete(purchase.id, purchase.invoiceNo)}
+                            onClick={() => handleDelete(firstPurchase.id, firstPurchase.invoiceNo)}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -211,25 +244,25 @@ const Purchases = () => {
               </tbody>
               <tfoot>
                 <tr className="border-t-2 border-border bg-muted/30">
-                  <td colSpan={6} className="px-4 py-3 text-right font-semibold">
+                  <td colSpan={4} className="px-4 py-3 text-right font-semibold">
                     Total:
                   </td>
                   <td className="px-4 py-3 text-right tabular-nums font-semibold">
-                    {filteredPurchases.reduce((sum, p) => sum + p.quantity, 0)}
+                    {filteredGroupedPurchases.reduce((sum, group) => sum + group.reduce((s, item) => s + item.quantity, 0), 0)}
                   </td>
                   <td className="px-4 py-3 text-right tabular-nums font-semibold">
                     {formatCurrency(
-                      filteredPurchases.reduce((sum, p) => sum + p.totalValue, 0)
+                      filteredGroupedPurchases.reduce((sum, group) => sum + group.reduce((s, item) => s + item.totalValue, 0), 0)
                     )}
                   </td>
                   <td className="px-4 py-3 text-right tabular-nums font-semibold">
                     {formatCurrency(
-                      filteredPurchases.reduce((sum, p) => sum + p.gstAmount, 0)
+                      filteredGroupedPurchases.reduce((sum, group) => sum + group.reduce((s, item) => s + item.gstAmount, 0), 0)
                     )}
                   </td>
                   <td className="px-4 py-3 text-right tabular-nums font-bold text-primary">
                     {formatCurrency(
-                      filteredPurchases.reduce((sum, p) => sum + p.grandTotal, 0)
+                      filteredGroupedPurchases.reduce((sum, group) => sum + group.reduce((s, item) => s + item.grandTotal, 0), 0)
                     )}
                   </td>
                   <td></td>
@@ -239,36 +272,37 @@ const Purchases = () => {
           </div>
         </div>
       </div>
-      
+
       {/* Add Purchase Dialog */}
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>New Purchase Entry</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 py-4">
+          <div className="space-y-4 py-4">
             <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Invoice No</Label>
+                <Input
+                  value={newPurchase.invoiceNo}
+                  onChange={(e) => setNewPurchase({ ...newPurchase, invoiceNo: e.target.value })}
+                />
+              </div>
               <div className="space-y-2">
                 <Label>Date</Label>
                 <Input
                   type="date"
-                  {...register('date')}
+                  value={newPurchase.date}
+                  onChange={(e) => setNewPurchase({ ...newPurchase, date: e.target.value })}
                 />
-                {errors.date && (
-                  <p className="text-sm text-destructive">{errors.date.message}</p>
-                )}
               </div>
             </div>
+
             <div className="space-y-2">
               <Label>Supplier *</Label>
               <Select
-                onValueChange={(value) => {
-                  reset({
-                    ...watchedFields,
-                    supplier: value
-                  });
-                }}
-                value={watchedFields.supplier}
+                value={newPurchase.supplier}
+                onValueChange={(value) => setNewPurchase({ ...newPurchase, supplier: value })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select supplier" />
@@ -281,20 +315,13 @@ const Purchases = () => {
                   ))}
                 </SelectContent>
               </Select>
-              {errors.supplier && (
-                <p className="text-sm text-destructive">{errors.supplier.message}</p>
-              )}
             </div>
+
             <div className="space-y-2">
               <Label>Product *</Label>
               <Select
-                onValueChange={(value) => {
-                  reset({
-                    ...watchedFields,
-                    productId: value
-                  });
-                }}
-                value={watchedFields.productId}
+                value={newPurchase.productId}
+                onValueChange={(value) => setNewPurchase({ ...newPurchase, productId: value })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select product" />
@@ -307,10 +334,8 @@ const Purchases = () => {
                   ))}
                 </SelectContent>
               </Select>
-              {errors.productId && (
-                <p className="text-sm text-destructive">{errors.productId.message}</p>
-              )}
             </div>
+
             {selectedProduct && (
               <div className="rounded-lg border border-border bg-muted/30 p-4">
                 <div className="grid grid-cols-2 gap-2 text-sm">
@@ -335,18 +360,18 @@ const Purchases = () => {
                 </div>
               </div>
             )}
+
             <div className="space-y-2">
               <Label>Quantity *</Label>
               <Input
                 type="number"
-                {...register('quantity', { valueAsNumber: true })}
+                value={newPurchase.quantity || ''}
+                onChange={(e) => setNewPurchase({ ...newPurchase, quantity: parseInt(e.target.value) || 0, })}
                 placeholder="Enter quantity"
               />
-              {errors.quantity && (
-                <p className="text-sm text-destructive">{errors.quantity.message}</p>
-              )}
             </div>
-            {selectedProduct && watchedFields.quantity > 0 && (
+
+            {selectedProduct && newPurchase.quantity > 0 && (
               <div className="rounded-lg border-2 border-primary/20 bg-primary/5 p-4">
                 <h4 className="mb-2 font-semibold">Calculated Values</h4>
                 <div className="grid grid-cols-2 gap-2 text-sm">
@@ -371,19 +396,27 @@ const Purchases = () => {
                 </div>
               </div>
             )}
-            <div className="flex justify-end gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setIsAddDialogOpen(false)}
-              >
-                Cancel
-              </Button>
-              <Button type="submit">Record Purchase</Button>
-            </div>
-          </form>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleAddPurchase}>Record Purchase</Button>
+          </div>
         </DialogContent>
       </Dialog>
+
+      {/* Hidden component for PDF generation */}
+      {pdfInvoiceData && (
+        <div className="absolute -left-[9999px] -top-[9999px]">
+          <ErpDocumentPdf
+            ref={pdfContentRef}
+            documentType={pdfInvoiceData.documentType}
+            invoiceData={pdfInvoiceData.invoiceData}
+            productsMap={pdfInvoiceData.productsMap}
+          />
+        </div>
+      )}
     </AppLayout>
   );
 };
