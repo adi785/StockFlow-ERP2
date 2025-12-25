@@ -5,6 +5,14 @@ import App from './App'
 import LoginPage from './pages/Login'
 import SignupPage from './pages/Signup'
 import ProtectedRoute from './components/ProtectedRoute'
+import Dashboard from './pages/Dashboard'
+import Products from './pages/Products'
+import Purchases from './pages/Purchases'
+import Sales from './pages/Sales'
+import Stock from './pages/Stock'
+import ProfitLoss from './pages/ProfitLoss'
+import Settings from './pages/Settings'
+import NotFound from './pages/NotFound'
 import './index.css'
 
 const root = createRoot(document.getElementById('root')!)
@@ -13,16 +21,23 @@ root.render(
   <React.StrictMode>
     <BrowserRouter>
       <Routes>
-        <Route
-          path="/"
-          element={
-            <ProtectedRoute>
-              <App />
-            </ProtectedRoute>
-          }
-        />
+        {/* Public routes */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
+        <Route path="/404" element={<NotFound />} /> {/* Add a specific route for 404 */}
+
+        {/* Protected routes wrapped by App component (which now acts as a layout) */}
+        <Route element={<ProtectedRoute><App /></ProtectedRoute>}>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/products" element={<Products />} />
+          <Route path="/purchases" element={<Purchases />} />
+          <Route path="/sales" element={<Sales />} />
+          <Route path="/stock" element={<Stock />} />
+          <Route path="/profit-loss" element={<ProfitLoss />} />
+          <Route path="/settings" element={<Settings />} />
+          {/* Catch-all for any other unmatched routes within the protected area */}
+          <Route path="*" element={<NotFound />} />
+        </Route>
       </Routes>
     </BrowserRouter>
   </React.StrictMode>
