@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
@@ -28,6 +28,11 @@ const Purchases = () => {
   const products = useERPStore((state) => state.products);
   const addPurchase = useERPStore((state) => state.addPurchase);
   const deletePurchase = useERPStore((state) => state.deletePurchase);
+  const fetchAllData = useERPStore((state) => state.fetchAllData);
+
+  useEffect(() => {
+    fetchAllData();
+  }, [fetchAllData]);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);

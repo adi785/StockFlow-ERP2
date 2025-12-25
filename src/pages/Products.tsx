@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
@@ -29,6 +29,11 @@ const Products = () => {
   const addProduct = useERPStore((state) => state.addProduct);
   const updateProduct = useERPStore((state) => state.updateProduct);
   const deleteProduct = useERPStore((state) => state.deleteProduct);
+  const fetchProducts = useERPStore((state) => state.fetchProducts);
+
+  useEffect(() => {
+    fetchProducts();
+  }, [fetchProducts]);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);

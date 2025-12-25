@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Input } from '@/components/ui/input';
@@ -11,6 +11,11 @@ const Stock = () => {
   const products = useERPStore((state) => state.products);
   const purchases = useERPStore((state) => state.purchases);
   const sales = useERPStore((state) => state.sales);
+  const fetchAllData = useERPStore((state) => state.fetchAllData);
+
+  useEffect(() => {
+    fetchAllData();
+  }, [fetchAllData]);
 
   const stockItems = useMemo(
     () => computeStockItems(products, purchases, sales),
