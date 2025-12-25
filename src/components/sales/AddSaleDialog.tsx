@@ -19,6 +19,7 @@ import { AlertCircle } from 'lucide-react';
 import { formatCurrency } from '@/lib/formatters';
 import { customers } from '@/data/mockData';
 import { Product, Purchase, Sale } from '@/types/erp';
+import { getAvailableStock } from '@/lib/erpCalculations'; // Added missing import
 
 interface AddSaleDialogProps {
   isOpen: boolean;
