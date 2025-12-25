@@ -1,12 +1,12 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useERPStore } from '@/store/erpStore';
-import { getProductById, getAvailableStock } from '@/lib/erpCalculations'; // Updated import path
+import { getProductById, getAvailableStock } from '@/lib/erpCalculations';
 import { formatCurrency, formatDate, generateInvoiceNo } from '@/lib/formatters';
-import { Plus, Trash2, Search, AlertCircle } from 'lucide-react';
+import { Plus, Trash2, Search, AlertCircle, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { customers } from '@/data/mockData';
 import {
@@ -23,6 +23,9 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
+import { SaleBillPdf } from '@/components/SaleBillPdf'; // Import the new component
 
 const Sales = () => {
   const sales = useERPStore((state) => state.sales);
@@ -126,6 +129,47 @@ const Sales = () => {
     toast.success('Sale recorded successfully - Stock updated');
   };
 
+  // Ref for the PDF content
+  const pdfContentRef = useRef<HTMLDivElement>(null);
+  const [pdfSaleData, setPdfSaleData] = useState<{ sale: Sale; product: Product | undefined } | null>(null);
+
+  const handleDownloadPdf = async (sale: Sale) => {
+    const product = getProductById(products, sale.productId);
+    setPdfSaleData({ sale, product });
+
+    // Wait for the component to render with the new data
+    // A small delay might be needed for the DOM to update
+    setTimeout(async () => {
+      if (pdfContentRef.current) {
+        const input = pdfContentRef.current;
+        const canvas = await html2canvas(input, { scale: 2 }); // Increased scale for better quality
+        const imgData = canvas.toDataURL('image/png');
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const imgWidth = 210; // A4 width in mm
+        const pageHeight = 297; // A4 height in mm
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        let heightLeft = imgHeight;
+        let position = 0;
+
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+
+        while (heightLeft >= 0) {
+          position = heightLeft - imgHeight;
+          pdf.addPage();
+          pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+          heightLeft -= pageHeight;
+        }
+
+        pdf.save(`Invoice_${sale.invoiceNo}.pdf`);
+        toast.success(`Invoice ${sale.invoiceNo} downloaded successfully!`);
+        setPdfSaleData(null); // Clear PDF data after download
+      } else {
+        toast.error('Failed to generate PDF. Please try again.');
+      }
+    }, 100); // Small delay
+  };
+
   return (
     <AppLayout>
       <PageHeader
@@ -172,7 +216,7 @@ const Sales = () => {
                   <th className="px-4 py-3 text-right font-semibold">Value</th>
                   <th className="px-4 py-3 text-right font-semibold">GST</th>
                   <th className="px-4 py-3 text-right font-semibold">Grand Total</th>
-                  <th className="px-4 py-3 text-center font-semibold w-16">Actions</th>
+                  <th className="px-4 py-3 text-center font-semibold w-24">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -209,15 +253,25 @@ const Sales = () => {
                         {formatCurrency(sale.gstAmount)}
                       </td>
                       <td className="px-4 py-2.5 text-right tabular-nums font-semibold text-green-600">
-                        {formatCurrency(calculatedValues.grandTotal)}
+                        {formatCurrency(sale.grandTotal)}
                       </td>
                       <td className="px-4 py-2.5">
-                        <div className="flex items-center justify-center">
+                        <div className="flex items-center justify-center gap-1">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7 text-primary hover:text-primary hover:bg-primary/10"
+                            onClick={() => handleDownloadPdf(sale)}
+                            title="Download Invoice"
+                          >
+                            <Download className="h-4 w-4" />
+                          </Button>
                           <Button
                             size="icon"
                             variant="ghost"
                             className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
                             onClick={() => handleDelete(sale.id, sale.invoiceNo)}
+                            title="Delete Sale"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -427,6 +481,13 @@ const Sales = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Hidden component for PDF generation */}
+      {pdfSaleData && (
+        <div className="absolute -left-[9999px] -top-[9999px]">
+          <SaleBillPdf ref={pdfContentRef} sale={pdfSaleData.sale} product={pdfSaleData.product} />
+        </div>
+      )}
     </AppLayout>
   );
 };
