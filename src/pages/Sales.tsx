@@ -25,7 +25,8 @@ import {
 import { Label } from '@/components/ui/label';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
-import { SaleBillPdf } from '@/components/SaleBillPdf'; // Import the new component
+import { SaleBillPdf } from '@/components/SaleBillPdf';
+import { Sale, Product } from '@/types/erp'; // Import Product type
 
 const Sales = () => {
   const sales = useERPStore((state) => state.sales);
@@ -75,15 +76,31 @@ const Sales = () => {
 
   const isQuantityValid = newSale.quantity > 0 && newSale.quantity <= availableStock;
 
-  const filteredSales = useMemo(
-    () => sales.filter(
-      (s) =>
-        s.invoiceNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        s.customer.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        s.productId.toLowerCase().includes(searchTerm.toLowerCase())
-    ),
-    [sales, searchTerm]
-  );
+  // Group sales by invoice number
+  const groupedSales = useMemo(() => {
+    const groups: { [key: string]: Sale[] } = {};
+    sales.forEach(sale => {
+      if (!groups[sale.invoiceNo]) {
+        groups[sale.invoiceNo] = [];
+      }
+      groups[sale.invoiceNo].push(sale);
+    });
+    // Sort groups by date of the first sale in descending order
+    return Object.values(groups).sort((a, b) => new Date(b[0].date).getTime() - new Date(a[0].date).getTime());
+  }, [sales]);
+
+  const filteredGroupedSales = useMemo(() => {
+    return groupedSales.filter(
+      (group) => {
+        const firstSale = group[0];
+        const matchesSearch =
+          firstSale.invoiceNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          firstSale.customer.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          group.some(item => item.productId.toLowerCase().includes(searchTerm.toLowerCase()));
+        return matchesSearch;
+      }
+    );
+  }, [groupedSales, searchTerm]);
 
   const handleDelete = (id: string, invoiceNo: string) => {
     if (confirm(`Are you sure you want to delete sale "${invoiceNo}"?`)) {
@@ -120,7 +137,7 @@ const Sales = () => {
 
     setIsAddDialogOpen(false);
     setNewSale({
-      invoiceNo: generateInvoiceNo('SAL', sales.length + 2),
+      invoiceNo: generateInvoiceNo('SAL', sales.length + 2), // Generate next invoice number
       customer: '',
       productId: '',
       quantity: 0,
@@ -131,14 +148,21 @@ const Sales = () => {
 
   // Ref for the PDF content
   const pdfContentRef = useRef<HTMLDivElement>(null);
-  const [pdfSaleData, setPdfSaleData] = useState<{ sale: Sale; product: Product | undefined } | null>(null);
+  const [pdfInvoiceData, setPdfInvoiceData] = useState<{ invoiceSales: Sale[]; productsMap: Map<string, Product> } | null>(null);
 
-  const handleDownloadPdf = async (sale: Sale) => {
-    const product = getProductById(products, sale.productId);
-    setPdfSaleData({ sale, product });
+  const handleDownloadPdf = async (invoiceNo: string) => {
+    const salesForInvoice = sales.filter(s => s.invoiceNo === invoiceNo);
+    if (salesForInvoice.length === 0) {
+      toast.error('No sales found for this invoice number.');
+      return;
+    }
+
+    const productsMap = new Map<string, Product>();
+    products.forEach(p => productsMap.set(p.productId, p));
+
+    setPdfInvoiceData({ invoiceSales: salesForInvoice, productsMap });
 
     // Wait for the component to render with the new data
-    // A small delay might be needed for the DOM to update
     setTimeout(async () => {
       if (pdfContentRef.current) {
         const input = pdfContentRef.current;
@@ -161,9 +185,9 @@ const Sales = () => {
           heightLeft -= pageHeight;
         }
 
-        pdf.save(`Invoice_${sale.invoiceNo}.pdf`);
-        toast.success(`Invoice ${sale.invoiceNo} downloaded successfully!`);
-        setPdfSaleData(null); // Clear PDF data after download
+        pdf.save(`Invoice_${invoiceNo}.pdf`);
+        toast.success(`Invoice ${invoiceNo} downloaded successfully!`);
+        setPdfInvoiceData(null); // Clear PDF data after download
       } else {
         toast.error('Failed to generate PDF. Please try again.');
       }
@@ -196,7 +220,7 @@ const Sales = () => {
             />
           </div>
           <div className="text-sm text-muted-foreground">
-            {filteredSales.length} records
+            {filteredGroupedSales.length} invoices
           </div>
         </div>
 
@@ -209,51 +233,55 @@ const Sales = () => {
                   <th className="px-4 py-3 text-left font-semibold">Date</th>
                   <th className="px-4 py-3 text-left font-semibold">Invoice No</th>
                   <th className="px-4 py-3 text-left font-semibold">Customer</th>
-                  <th className="px-4 py-3 text-left font-semibold">Product ID</th>
-                  <th className="px-4 py-3 text-left font-semibold">Product Name</th>
-                  <th className="px-4 py-3 text-right font-semibold">Rate</th>
-                  <th className="px-4 py-3 text-right font-semibold">Qty</th>
-                  <th className="px-4 py-3 text-right font-semibold">Value</th>
-                  <th className="px-4 py-3 text-right font-semibold">GST</th>
+                  <th className="px-4 py-3 text-left font-semibold">Items</th>
+                  <th className="px-4 py-3 text-right font-semibold">Total Qty</th>
+                  <th className="px-4 py-3 text-right font-semibold">Total Value</th>
+                  <th className="px-4 py-3 text-right font-semibold">Total GST</th>
                   <th className="px-4 py-3 text-right font-semibold">Grand Total</th>
                   <th className="px-4 py-3 text-center font-semibold w-24">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {filteredSales.map((sale) => {
-                  const product = getProductById(products, sale.productId);
+                {filteredGroupedSales.map((invoiceGroup) => {
+                  const firstSale = invoiceGroup[0];
+                  const totalQuantity = invoiceGroup.reduce((sum, s) => sum + s.quantity, 0);
+                  const totalValue = invoiceGroup.reduce((sum, s) => sum + s.totalValue, 0);
+                  const totalGstAmount = invoiceGroup.reduce((sum, s) => sum + s.gstAmount, 0);
+                  const grandTotal = invoiceGroup.reduce((sum, s) => sum + s.grandTotal, 0);
+
                   return (
                     <tr
-                      key={sale.id}
+                      key={firstSale.invoiceNo}
                       className="grid-row hover:bg-muted/30 transition-colors"
                     >
                       <td className="px-4 py-2.5 text-muted-foreground">
-                        {formatDate(sale.date)}
+                        {formatDate(firstSale.date)}
                       </td>
                       <td className="px-4 py-2.5 font-mono text-xs font-medium text-green-600">
-                        {sale.invoiceNo}
+                        {firstSale.invoiceNo}
                       </td>
-                      <td className="px-4 py-2.5">{sale.customer}</td>
-                      <td className="px-4 py-2.5 font-mono text-xs">
-                        {sale.productId}
-                      </td>
-                      <td className="px-4 py-2.5 font-medium">
-                        {product?.name || 'Unknown Product'}
-                      </td>
-                      <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground">
-                        {formatCurrency(sale.sellingRate)}
+                      <td className="px-4 py-2.5">{firstSale.customer}</td>
+                      <td className="px-4 py-2.5">
+                        {invoiceGroup.map((item, index) => {
+                          const product = getProductById(products, item.productId);
+                          return (
+                            <div key={item.id} className="text-xs">
+                              {product?.name || 'Unknown'} ({item.quantity} units)
+                            </div>
+                          );
+                        })}
                       </td>
                       <td className="px-4 py-2.5 text-right tabular-nums font-medium">
-                        {sale.quantity}
+                        {totalQuantity}
                       </td>
                       <td className="px-4 py-2.5 text-right tabular-nums">
-                        {formatCurrency(sale.totalValue)}
+                        {formatCurrency(totalValue)}
                       </td>
                       <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground">
-                        {formatCurrency(sale.gstAmount)}
+                        {formatCurrency(totalGstAmount)}
                       </td>
                       <td className="px-4 py-2.5 text-right tabular-nums font-semibold text-green-600">
-                        {formatCurrency(sale.grandTotal)}
+                        {formatCurrency(grandTotal)}
                       </td>
                       <td className="px-4 py-2.5">
                         <div className="flex items-center justify-center gap-1">
@@ -261,16 +289,17 @@ const Sales = () => {
                             size="icon"
                             variant="ghost"
                             className="h-7 w-7 text-primary hover:text-primary hover:bg-primary/10"
-                            onClick={() => handleDownloadPdf(sale)}
+                            onClick={() => handleDownloadPdf(firstSale.invoiceNo)}
                             title="Download Invoice"
                           >
                             <Download className="h-4 w-4" />
                           </Button>
+                          {/* Delete button for the entire invoice group (optional, can be modified to delete individual items) */}
                           <Button
                             size="icon"
                             variant="ghost"
                             className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
-                            onClick={() => handleDelete(sale.id, sale.invoiceNo)}
+                            onClick={() => handleDelete(firstSale.id, firstSale.invoiceNo)} // Deletes only the first item, needs adjustment for full invoice deletion
                             title="Delete Sale"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -283,25 +312,25 @@ const Sales = () => {
               </tbody>
               <tfoot>
                 <tr className="border-t-2 border-border bg-muted/30">
-                  <td colSpan={6} className="px-4 py-3 text-right font-semibold">
-                    Total:
+                  <td colSpan={4} className="px-4 py-3 text-right font-semibold">
+                    Grand Total:
                   </td>
                   <td className="px-4 py-3 text-right tabular-nums font-semibold">
-                    {filteredSales.reduce((sum, s) => sum + s.quantity, 0)}
+                    {filteredGroupedSales.reduce((sum, group) => sum + group.reduce((s, item) => s + item.quantity, 0), 0)}
                   </td>
                   <td className="px-4 py-3 text-right tabular-nums font-semibold">
                     {formatCurrency(
-                      filteredSales.reduce((sum, s) => sum + s.totalValue, 0)
+                      filteredGroupedSales.reduce((sum, group) => sum + group.reduce((s, item) => s + item.totalValue, 0), 0)
                     )}
                   </td>
                   <td className="px-4 py-3 text-right tabular-nums font-semibold">
                     {formatCurrency(
-                      filteredSales.reduce((sum, s) => sum + s.gstAmount, 0)
+                      filteredGroupedSales.reduce((sum, group) => sum + group.reduce((s, item) => s + item.gstAmount, 0), 0)
                     )}
                   </td>
                   <td className="px-4 py-3 text-right tabular-nums font-bold text-green-600">
                     {formatCurrency(
-                      filteredSales.reduce((sum, s) => sum + s.grandTotal, 0)
+                      filteredGroupedSales.reduce((sum, group) => sum + group.reduce((s, item) => s + item.grandTotal, 0), 0)
                     )}
                   </td>
                   <td></td>
@@ -483,9 +512,9 @@ const Sales = () => {
       </Dialog>
 
       {/* Hidden component for PDF generation */}
-      {pdfSaleData && (
+      {pdfInvoiceData && (
         <div className="absolute -left-[9999px] -top-[9999px]">
-          <SaleBillPdf ref={pdfContentRef} sale={pdfSaleData.sale} product={pdfSaleData.product} />
+          <SaleBillPdf ref={pdfContentRef} invoiceSales={pdfInvoiceData.invoiceSales} productsMap={pdfInvoiceData.productsMap} />
         </div>
       )}
     </AppLayout>

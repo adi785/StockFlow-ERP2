@@ -3,19 +3,24 @@ import { Sale, Product } from '@/types/erp';
 import { formatCurrency, formatDate } from '@/lib/formatters';
 
 interface SaleBillPdfProps {
-  sale: Sale;
-  product: Product | undefined;
+  invoiceSales: Sale[];
+  productsMap: Map<string, Product>;
 }
 
 export const SaleBillPdf = React.forwardRef<HTMLDivElement, SaleBillPdfProps>(
-  ({ sale, product }, ref) => {
-    const gstRate = product?.gstPercent || 0;
-    const sellingRate = product?.sellingRate || 0;
-    const quantity = sale.quantity;
+  ({ invoiceSales, productsMap }, ref) => {
+    if (!invoiceSales || invoiceSales.length === 0) {
+      return <div ref={ref}>No sales data available for this invoice.</div>;
+    }
 
-    const itemTotal = sellingRate * quantity;
-    const itemGstAmount = (itemTotal * gstRate) / 100;
-    const itemGrandTotal = itemTotal + itemGstAmount;
+    const firstSale = invoiceSales[0];
+    const invoiceNo = firstSale.invoiceNo;
+    const customer = firstSale.customer;
+    const saleDate = firstSale.date;
+
+    let totalSubtotal = 0;
+    let totalGstAmount = 0;
+    let totalGrandTotal = 0;
 
     return (
       <div ref={ref} className="p-8 bg-white text-gray-900 w-[210mm] min-h-[297mm] mx-auto shadow-lg">
@@ -26,15 +31,15 @@ export const SaleBillPdf = React.forwardRef<HTMLDivElement, SaleBillPdfProps>(
           </div>
           <div className="text-right">
             <h2 className="text-2xl font-semibold">TAX INVOICE</h2>
-            <p className="text-sm text-gray-700">Invoice No: <span className="font-medium">{sale.invoiceNo}</span></p>
-            <p className="text-sm text-gray-700">Date: <span className="font-medium">{formatDate(sale.date)}</span></p>
+            <p className="text-sm text-gray-700">Invoice No: <span className="font-medium">{invoiceNo}</span></p>
+            <p className="text-sm text-gray-700">Date: <span className="font-medium">{formatDate(saleDate)}</span></p>
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4 mb-8">
           <div>
             <h3 className="text-lg font-semibold text-gray-800 mb-2">Bill To:</h3>
-            <p className="font-medium">{sale.customer}</p>
+            <p className="font-medium">{customer}</p>
             <p className="text-sm text-gray-600">Customer Address Line 1</p>
             <p className="text-sm text-gray-600">Customer Address Line 2</p>
             <p className="text-sm text-gray-600">City, State - ZIP</p>
@@ -61,14 +66,31 @@ export const SaleBillPdf = React.forwardRef<HTMLDivElement, SaleBillPdfProps>(
             </tr>
           </thead>
           <tbody>
-            <tr className="border-b border-gray-200">
-              <td className="py-2 px-4 text-sm">1</td>
-              <td className="py-2 px-4 text-sm font-medium">{product?.name || 'N/A'} ({product?.productId})</td>
-              <td className="py-2 px-4 text-right text-sm tabular-nums">{formatCurrency(sellingRate)}</td>
-              <td className="py-2 px-4 text-right text-sm tabular-nums">{quantity}</td>
-              <td className="py-2 px-4 text-right text-sm tabular-nums">{gstRate}%</td>
-              <td className="py-2 px-4 text-right text-sm tabular-nums">{formatCurrency(itemTotal)}</td>
-            </tr>
+            {invoiceSales.map((saleItem, index) => {
+              const product = productsMap.get(saleItem.productId);
+              const gstRate = product?.gstPercent || 0;
+              const sellingRate = saleItem.sellingRate; // Use sellingRate from saleItem
+              const quantity = saleItem.quantity;
+
+              const itemTotal = sellingRate * quantity;
+              const itemGstAmount = (itemTotal * gstRate) / 100;
+              const itemGrandTotal = itemTotal + itemGstAmount;
+
+              totalSubtotal += itemTotal;
+              totalGstAmount += itemGstAmount;
+              totalGrandTotal += itemGrandTotal;
+
+              return (
+                <tr key={saleItem.id} className="border-b border-gray-200">
+                  <td className="py-2 px-4 text-sm">{index + 1}</td>
+                  <td className="py-2 px-4 text-sm font-medium">{product?.name || 'N/A'} ({saleItem.productId})</td>
+                  <td className="py-2 px-4 text-right text-sm tabular-nums">{formatCurrency(sellingRate)}</td>
+                  <td className="py-2 px-4 text-right text-sm tabular-nums">{quantity}</td>
+                  <td className="py-2 px-4 text-right text-sm tabular-nums">{gstRate}%</td>
+                  <td className="py-2 px-4 text-right text-sm tabular-nums">{formatCurrency(itemTotal)}</td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
 
@@ -76,15 +98,15 @@ export const SaleBillPdf = React.forwardRef<HTMLDivElement, SaleBillPdfProps>(
           <div className="w-full max-w-xs">
             <div className="flex justify-between py-1 border-b border-gray-200">
               <span className="text-sm text-gray-700">Subtotal:</span>
-              <span className="text-sm font-medium tabular-nums">{formatCurrency(itemTotal)}</span>
+              <span className="text-sm font-medium tabular-nums">{formatCurrency(totalSubtotal)}</span>
             </div>
             <div className="flex justify-between py-1 border-b border-gray-200">
-              <span className="text-sm text-gray-700">GST ({gstRate}%):</span>
-              <span className="text-sm font-medium tabular-nums">{formatCurrency(itemGstAmount)}</span>
+              <span className="text-sm text-gray-700">Total GST:</span>
+              <span className="text-sm font-medium tabular-nums">{formatCurrency(totalGstAmount)}</span>
             </div>
             <div className="flex justify-between py-2 border-b-2 border-gray-300 mt-2">
               <span className="text-lg font-semibold text-gray-800">Grand Total:</span>
-              <span className="text-lg font-bold text-primary tabular-nums">{formatCurrency(itemGrandTotal)}</span>
+              <span className="text-lg font-bold text-primary tabular-nums">{formatCurrency(totalGrandTotal)}</span>
             </div>
           </div>
         </div>
