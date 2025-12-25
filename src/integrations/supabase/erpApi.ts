@@ -12,7 +12,16 @@ export const fetchProductsApi = async (userId: string): Promise<Product[]> => {
 
   if (error) throw error;
   return (data || []).map((p) => ({
-    ...p,
+    id: p.id,
+    productId: p.product_id,
+    name: p.name,
+    brand: p.brand,
+    category: p.category,
+    purchaseRate: p.purchase_rate,
+    sellingRate: p.selling_rate,
+    gstPercent: p.gst_percent,
+    openingStock: p.opening_stock,
+    reorderLevel: p.reorder_level,
     createdAt: new Date(p.created_at),
     updatedAt: new Date(p.updated_at),
   }));
@@ -70,7 +79,15 @@ export const fetchPurchasesApi = async (userId: string): Promise<Purchase[]> => 
 
   if (error) throw error;
   return (data || []).map((p) => ({
-    ...p,
+    id: p.id,
+    invoiceNo: p.invoice_no,
+    supplier: p.supplier,
+    productId: p.product_id,
+    quantity: p.quantity,
+    purchaseRate: p.purchase_rate,
+    totalValue: p.total_value,
+    gstAmount: p.gst_amount,
+    grandTotal: p.grand_total,
     date: new Date(p.date),
     createdAt: new Date(p.created_at),
   }));
@@ -118,7 +135,15 @@ export const fetchSalesApi = async (userId: string): Promise<Sale[]> => {
 
   if (error) throw error;
   return (data || []).map((s) => ({
-    ...s,
+    id: s.id,
+    invoiceNo: s.invoice_no,
+    customer: s.customer,
+    productId: s.product_id,
+    quantity: s.quantity,
+    sellingRate: s.selling_rate,
+    totalValue: s.total_value,
+    gstAmount: s.gst_amount,
+    grandTotal: s.grand_total,
     date: new Date(s.date),
     createdAt: new Date(s.created_at),
   }));
