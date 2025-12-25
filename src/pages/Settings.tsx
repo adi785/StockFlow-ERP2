@@ -34,6 +34,9 @@ const Settings = () => {
     first_name: '',
     last_name: '',
     avatar_url: '',
+    business_name: '',
+    gstin: '',
+    proprietor_name: '',
   });
   const [notifications, setNotifications] = useState({
     email_alerts: true,
@@ -58,7 +61,7 @@ const Settings = () => {
 
       const { data, error } = await supabase
         .from('profiles')
-        .select('first_name, last_name, avatar_url')
+        .select('first_name, last_name, avatar_url, business_name, gstin, proprietor_name')
         .eq('id', user.id)
         .single();
 
@@ -69,6 +72,9 @@ const Settings = () => {
           first_name: data.first_name || '',
           last_name: data.last_name || '',
           avatar_url: data.avatar_url || '',
+          business_name: data.business_name || '',
+          gstin: data.gstin || '',
+          proprietor_name: data.proprietor_name || '',
         });
       }
     } catch (error) {
@@ -91,6 +97,9 @@ const Settings = () => {
           first_name: profile.first_name,
           last_name: profile.last_name,
           avatar_url: profile.avatar_url,
+          business_name: profile.business_name,
+          gstin: profile.gstin,
+          proprietor_name: profile.proprietor_name,
           updated_at: new Date().toISOString(),
         });
 
@@ -142,7 +151,7 @@ const Settings = () => {
               Profile Settings
             </CardTitle>
             <CardDescription>
-              Manage your personal information and profile settings
+              Manage your personal information and business details
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -163,6 +172,37 @@ const Settings = () => {
                   value={profile.last_name}
                   onChange={(e) => setProfile({...profile, last_name: e.target.value})}
                   placeholder="Enter your last name"
+                />
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="business-name">Business Name</Label>
+              <Input
+                id="business-name"
+                value={profile.business_name}
+                onChange={(e) => setProfile({...profile, business_name: e.target.value})}
+                placeholder="Enter your business name"
+              />
+            </div>
+            
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="gst">GSTIN</Label>
+                <Input
+                  id="gst"
+                  value={profile.gstin}
+                  onChange={(e) => setProfile({...profile, gstin: e.target.value})}
+                  placeholder="Enter GST identification number"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="proprietor">Proprietor Name</Label>
+                <Input
+                  id="proprietor"
+                  value={profile.proprietor_name}
+                  onChange={(e) => setProfile({...profile, proprietor_name: e.target.value})}
+                  placeholder="Enter proprietor name"
                 />
               </div>
             </div>
