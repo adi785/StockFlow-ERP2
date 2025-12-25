@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { Product, Purchase, Sale, StockItem, ProfitLossItem, DashboardStats } from '@/types/erp';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/integrations/supabase/client'; // Updated import path
 
 interface ERPState {
   products: Product[];

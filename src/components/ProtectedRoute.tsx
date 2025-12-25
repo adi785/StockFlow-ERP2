@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
-import { Navigate } from 'react-router-dom'
-import { supabase } from '../lib/supabase' // Correct import path
+import { Navigate, Outlet } from 'react-router-dom' // Added Outlet
+import { supabase } from '../integrations/supabase/client' // Correct import path
 
 type Props = { children: JSX.Element }
 
