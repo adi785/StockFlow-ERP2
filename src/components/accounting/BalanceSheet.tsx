@@ -2,12 +2,20 @@ import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency } from '@/lib/formatters';
 import { BalanceSheet } from '@/types/accounting';
+import { useAccountingStore } from '@/store/accountingStore';
 
 interface BalanceSheetProps {
-  balanceSheet: BalanceSheet;
+  // Balance sheet data would be passed here
 }
 
-export const BalanceSheetComponent: React.FC<BalanceSheetProps> = ({ balanceSheet }) => {
+export const BalanceSheet: React.FC<BalanceSheetProps> = () => {
+  const getBalanceSheet = useAccountingStore((state) => state.getBalanceSheet);
+  
+  const startDate = new Date(new Date().getFullYear(), 0, 1);
+  const endDate = new Date();
+  
+  const balanceSheet = getBalanceSheet(startDate, endDate);
+
   return (
     <Card>
       <CardHeader>

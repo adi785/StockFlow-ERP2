@@ -2,12 +2,21 @@ import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency } from '@/lib/formatters';
 import { ProfitLossStatement } from '@/types/accounting';
+import { useAccountingStore } from '@/store/accountingStore';
 
 interface ProfitLossStatementProps {
-  statement: ProfitLossStatement;
+  sales: any[];
+  purchases: any[];
 }
 
-export const ProfitLossStatementComponent: React.FC<ProfitLossStatementProps> = ({ statement }) => {
+export const ProfitLossStatement: React.FC<ProfitLossStatementProps> = ({ sales, purchases }) => {
+  const getProfitLossStatement = useAccountingStore((state) => state.getProfitLossStatement);
+  
+  const startDate = new Date(new Date().getFullYear(), 0, 1);
+  const endDate = new Date();
+  
+  const statement = getProfitLossStatement(startDate, endDate);
+
   return (
     <Card>
       <CardHeader>

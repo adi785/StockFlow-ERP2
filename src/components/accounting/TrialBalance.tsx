@@ -2,12 +2,17 @@ import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency } from '@/lib/formatters';
 import { TrialBalance } from '@/types/accounting';
+import { useAccountingStore } from '@/store/accountingStore';
 
 interface TrialBalanceProps {
-  trialBalance: TrialBalance[];
+  ledgers: Ledger[];
 }
 
-export const TrialBalanceComponent: React.FC<TrialBalanceProps> = ({ trialBalance }) => {
+export const TrialBalance: React.FC<TrialBalanceProps> = ({ ledgers }) => {
+  const getTrialBalance = useAccountingStore((state) => state.getTrialBalance);
+  
+  const trialBalance = getTrialBalance();
+
   const totalDebit = trialBalance.reduce((sum, item) => sum + item.debitTotal, 0);
   const totalCredit = trialBalance.reduce((sum, item) => sum + item.creditTotal, 0);
 
